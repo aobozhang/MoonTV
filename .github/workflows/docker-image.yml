@@ -3,7 +3,7 @@ name: Build & Push Docker image
 on:
   pull_request_target:
     branches:
-      - main
+      - category_explorer
     paths-ignore:
       - '**.md'
       - '.github/**'
@@ -228,6 +228,6 @@ jobs:
       - name: Refresh VERSION.txt cache
         run: |
           echo "Refreshing VERSION.txt cache..."
-          curl -s https://purge.jsdelivr.net/gh/LunaTechLab/moontv/VERSION.txt
+          curl -s https://purge.jsdelivr.net/gh/samqin123/moontv/VERSION.txt
           echo ""
           echo "VERSION.txt cache refreshed successfully"
