@@ -3,7 +3,7 @@ name: Build & Push Docker image
 on:
   pull_request_target:
     branches:
-      - category_explorer
+      - main
     paths-ignore:
       - '**.md'
       - '.github/**'
