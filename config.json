@@ -84,6 +84,66 @@
     "xiaomaomi": {
       "api": "https://zy.xmm.hk/api.php/provide/vod",
       "name": "小猫咪资源"
+    },
+    "91md": {
+      "name": "91资源",
+      "api": "https://91md.me/api.php/provide/vod",
+      "isAdult": true
+    },
+    "apilj": {
+      "name": "辣椒",
+      "api": "https://apilj.com/api.php/provide/vod",
+      "isAdult": true
+    },
+    "ckzy": {
+      "name": "ck资源",
+      "api": "https://ckzy.me/api.php/provide/vod",
+      "isAdult": true
+    },
+    "lbapiby": {
+      "name": "AIvin",
+      "api": "http://lbapiby.com/api.php/provide/vod/at/json",
+      "isAdult": true
+    },
+    "api": {
+      "name": "色猫资源",
+      "api": "https://api.maozyapi.com/inc/apijson_vod.php",
+      "isAdult": true
+    },
+    "msnii": {
+      "name": "msn资源",
+      "api": "https://www.msnii.com/api/json.php",
+      "isAdult": true
+    },
+    "xrbsp": {
+      "name": "淫水机资源",
+      "api": "https://www.xrbsp.com/api/json.php",
+      "isAdult": true
+    },
+    "kxgav": {
+      "name": "白嫖资源",
+      "api": "https://www.kxgav.com/api/json.php",
+      "isAdult": true
+    },
+    "gdlsp": {
+      "name": "香奶儿资源",
+      "api": "https://www.gdlsp.com/api/json.php",
+      "isAdult": true
+    },
+    "pgxdy": {
+      "name": "黄AV资源",
+      "api": "https://www.pgxdy.com/api/json.php",
+      "isAdult": true
+    },
+    "fhapi9": {
+      "name": "番号资源",
+      "api": "http://fhapi9.com/api.php/provide/vod",
+      "isAdult": true
+    },
+    "shayuapi": {
+      "name": "鲨鱼资源",
+      "api": "https://shayuapi.com/api.php/provide/vod",
+      "isAdult": true
     }
   }
 }

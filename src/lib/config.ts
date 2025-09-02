@@ -35,7 +35,26 @@ export const API_CONFIG = {
     },
   },
   detail: {
-    path: '?ac=videolist&ids=',
+    path: '?ac=detail&ids=',
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      Accept: 'application/json',
+    },
+  },
+  category_recent: {
+    path: '?ac=videolist&t=',
+    allPath: '?ac=videolist',
+    pagePath: '?ac=videolist&t={category}&pg={page}',
+    allPagePath: '?ac=videolist&pg={page}',
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      Accept: 'application/json',
+    },
+  },
+  category_list: {
+    path: '?',
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',

@@ -106,6 +106,7 @@ export interface DoubanItem {
   year: string;
 }
 
+// 豆瓣搜索结果
 export interface DoubanResult {
   code: number;
   message: string;

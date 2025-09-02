@@ -2,7 +2,16 @@
 
 'use client';
 
-import { Cat, Clover, Film, Home, Search, Star, Tv } from 'lucide-react';
+import {
+  Cat,
+  Clover,
+  Film,
+  Home,
+  Newspaper,
+  Search,
+  Star,
+  Tv,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -23,6 +32,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
   const [navItems, setNavItems] = useState([
     { icon: Home, label: '首页', href: '/' },
     { icon: Search, label: '搜索', href: '/search' },
+    { icon: Newspaper, label: '分類', href: '/category' },
     {
       icon: Film,
       label: '电影',
@@ -87,11 +97,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
-            <li
-              key={item.href}
-              className='flex-shrink-0'
-              style={{ width: '20vw', minWidth: '20vw' }}
-            >
+            <li key={item.href} className='flex-grow w-auto'>
               <Link
                 href={item.href}
                 className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs'

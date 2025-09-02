@@ -2,7 +2,7 @@ import { API_CONFIG, ApiSite, getConfig } from '@/lib/config';
 import { SearchResult } from '@/lib/types';
 import { cleanHtmlTags } from '@/lib/utils';
 
-interface ApiSearchItem {
+export interface ApiSearchItem {
   vod_id: string;
   vod_name: string;
   vod_pic: string;
@@ -13,6 +13,11 @@ interface ApiSearchItem {
   vod_content?: string;
   vod_douban_id?: number;
   type_name?: string;
+}
+
+export interface ApiCategory {
+  type_id: string;
+  type_name: string;
 }
 
 export async function searchFromApi(
@@ -206,6 +211,136 @@ export async function searchFromApi(
     }
 
     return results;
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function cateRecentFromApi(
+  apiSite: ApiSite,
+  category?: string,
+  page?: string | null
+): Promise<SearchResult[]> {
+  try {
+    const apiBaseUrl = apiSite.api;
+    const apiUrl = category
+      ? apiBaseUrl +
+        API_CONFIG.category_recent.path +
+        encodeURIComponent(category) +
+        (Number(page) > 1 ? `&pg=${page}` : '')
+      : apiBaseUrl + API_CONFIG.category_recent.allPath;
+
+    const apiName = apiSite.name;
+
+    // 添加超时处理
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const response = await fetch(apiUrl, {
+      headers: API_CONFIG.category_recent.headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+
+    if (
+      !data ||
+      !data.list ||
+      !Array.isArray(data.list) ||
+      data.list.length === 0
+    ) {
+      return [];
+    }
+    // 处理第一页结果
+    const results = data.list.map((item: ApiSearchItem) => {
+      let episodes: string[] = [];
+      let titles: string[] = [];
+
+      // 使用正则表达式从 vod_play_url 提取 m3u8 链接
+      if (item.vod_play_url) {
+        // 先用 $$$ 分割
+        const vod_play_url_array = item.vod_play_url.split('$$$');
+        // 分集之间#分割，标题和播放链接 $ 分割
+        vod_play_url_array.forEach((url: string) => {
+          const matchEpisodes: string[] = [];
+          const matchTitles: string[] = [];
+          const title_url_array = url.split('#');
+          title_url_array.forEach((title_url: string) => {
+            const episode_title_url = title_url.split('$');
+            if (
+              episode_title_url.length === 2 &&
+              episode_title_url[1].endsWith('.m3u8')
+            ) {
+              matchTitles.push(episode_title_url[0]);
+              matchEpisodes.push(episode_title_url[1]);
+            }
+          });
+          if (matchEpisodes.length > episodes.length) {
+            episodes = matchEpisodes;
+            titles = matchTitles;
+          }
+        });
+      }
+
+      return {
+        id: item.vod_id.toString(),
+        title: item.vod_name.trim().replace(/\s+/g, ' '),
+        poster: item.vod_pic,
+        episodes,
+        episodes_titles: titles,
+        source: apiSite.key,
+        source_name: apiName,
+        class: item.vod_class,
+        year: item.vod_year
+          ? item.vod_year.match(/\d{4}/)?.[0] || ''
+          : 'unknown',
+        desc: cleanHtmlTags(item.vod_content || ''),
+        type_name: item.type_name,
+        douban_id: item.vod_douban_id,
+      };
+    });
+
+    return results;
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function cateListFromApi(
+  apiSite: ApiSite
+): Promise<ApiCategory[]> {
+  try {
+    const apiBaseUrl = apiSite.api;
+    const apiUrl = apiBaseUrl + API_CONFIG.category_list.path;
+
+    // 添加超时处理
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(apiUrl, {
+      headers: API_CONFIG.category_list.headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return [];
+    }
+    const data = await response.json();
+
+    const result = data.class.map((item: ApiCategory) => {
+      return {
+        type_id: item.type_id,
+        type_name: item.type_name,
+      };
+    });
+    return result;
   } catch (error) {
     return [];
   }
