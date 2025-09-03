@@ -338,7 +338,7 @@ function CategoryPageClient() {
 
   return (
     <PageLayout activePath='/category'>
-      <div className='px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10'>
+      <div className='px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10 select-none'>
         <div className='space-y-3 bg-white/60 dark:bg-gray-800/40 rounded-2xl p-4 sm:p-6 border border-gray-200/30 dark:border-gray-700/30 backdrop-blur-sm'>
           {/* 一级选择器 */}
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
@@ -381,7 +381,7 @@ function CategoryPageClient() {
                   <div
                     key={item.type_id}
                     onClick={() => setSecondarySelection(item)}
-                    className={`hover:bg-white/60 hover:rounded-full text-nowrap px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 active:bg-white active:rounded-sm active:border-gray-400 ${
+                    className={`hover:bg-white/60 hover:rounded-full text-nowrap px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 active:bg-white active:rounded-full active:border-gray-400 ${
                       isActive
                         ? 'bg-white rounded-full shadow-sm border-gray-400'
                         : ''

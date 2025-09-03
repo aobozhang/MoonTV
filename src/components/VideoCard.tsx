@@ -279,7 +279,26 @@ export default function VideoCard({
           src={processImageUrl(actualPoster)}
           alt={actualTitle}
           fill
-          className='object-cover'
+          className='absolute inset-0 object-cover blur'
+          referrerPolicy='no-referrer'
+          loading='lazy'
+          onLoadingComplete={() => setIsLoading(true)}
+          onError={(e) => {
+            // 图片加载失败时的重试机制
+            const img = e.target as HTMLImageElement;
+            if (!img.dataset.retried) {
+              img.dataset.retried = 'true';
+              setTimeout(() => {
+                img.src = processImageUrl(actualPoster);
+              }, 2000);
+            }
+          }}
+        />
+        <Image
+          src={processImageUrl(actualPoster)}
+          alt={actualTitle}
+          fill
+          className='object-contain'
           referrerPolicy='no-referrer'
           loading='lazy'
           onLoadingComplete={() => setIsLoading(true)}
