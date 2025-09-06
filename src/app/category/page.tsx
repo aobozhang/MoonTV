@@ -230,9 +230,7 @@ function CategoryPageClient() {
     setHasMore(true);
     setIsLoadingMore(false);
 
-    fetchList(primarySelection, categoryId).then(() =>
-      fetchSearchResults(primarySelection, secondarySelection)
-    );
+    fetchList(primarySelection, categoryId);
   }, [primarySelection]);
 
   // 单独处理 currentPage 变化（加载更多）
