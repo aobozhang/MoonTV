@@ -39,14 +39,21 @@ function CategoryPageClient() {
   const resourceId = searchParams.get('resourceId') || '';
   const categoryId = searchParams.get('categoryId') || '';
 
-  const fetchList = async (primarySelection: ApiSite) => {
+  const fetchList = async (
+    primarySelection: ApiSite,
+    defaultCategoryId = ''
+  ) => {
     // 重置二级选择
-    setSecondarySelection({ type_id: '', type_name: '全部' });
     setSecondaryData([]);
 
     const params = {
       resourceId: primarySelection.key,
     };
+
+    if (!resourceId) {
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -63,19 +70,13 @@ function CategoryPageClient() {
         return;
       }
 
-      setSecondaryData([{ type_id: '', type_name: '全部' }, ...data.results]);
-
-      if (resourceId && !secondarySelection) {
-        const selectedCategory = data.results.find(
-          (category: ApiCategory) => category.type_id === resourceId
-        );
-        if (selectedCategory) {
-          setSecondarySelection(selectedCategory);
+      const finalData = [{ type_id: '', type_name: '全部' }, ...data.results];
+      setSecondaryData(finalData);
+      finalData.forEach((category: ApiCategory) => {
+        if (String(category.type_id) === String(defaultCategoryId)) {
+          setSecondarySelection(category);
         }
-      }
-      if (!resourceId && !secondarySelection) {
-        setSecondarySelection({ type_id: '', type_name: '全部' });
-      }
+      });
     } catch (error) {
       throw new Error('Failed to fetch category list');
     } finally {
@@ -229,7 +230,9 @@ function CategoryPageClient() {
     setHasMore(true);
     setIsLoadingMore(false);
 
-    fetchList(primarySelection);
+    fetchList(primarySelection, categoryId).then(() =>
+      fetchSearchResults(primarySelection, secondarySelection)
+    );
   }, [primarySelection]);
 
   // 单独处理 currentPage 变化（加载更多）
@@ -376,7 +379,7 @@ function CategoryPageClient() {
             ) : null}
             <div className='overflow-x-auto flex flex-row flex-nowrap bg-gray-200/60 rounded-full p-0.5 sm:p-1 dark:bg-gray-700/60 backdrop-blur-sm'>
               {secondaryData.map((item) => {
-                const isActive = item.type_id === secondarySelection?.type_id;
+                const isActive = item.type_id == secondarySelection?.type_id;
                 return (
                   <div
                     key={item.type_id}
