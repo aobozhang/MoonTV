@@ -505,9 +505,13 @@ function PlayPageClient() {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      const preLine = i > 0 ? lines[i - 1] : '';
 
       // 只过滤#EXT-X-DISCONTINUITY标识
-      if (!line.includes('#EXT-X-DISCONTINUITY')) {
+      if (
+        !line.includes('#EXT-X-DISCONTINUITY') ||
+        preLine.includes('#EXT-X-DISCONTINUITY')
+      ) {
         filteredLines.push(line);
       }
     }
