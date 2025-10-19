@@ -83,13 +83,13 @@ function PlayPageClient() {
   // 跳过检查的时间间隔控制
   const lastSkipCheckRef = useRef(0);
 
-  // 去广告开关（从 localStorage 继承，默认 true）
+  // 去广告开关（从 localStorage 继承，默认 false）
   const [blockAdEnabled, setBlockAdEnabled] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const v = localStorage.getItem('enable_blockad');
-      if (v !== null) return v === 'true';
+      if (v !== null) return v === 'false';
     }
-    return true;
+    return false;
   });
   const blockAdEnabledRef = useRef(blockAdEnabled);
   useEffect(() => {
@@ -505,13 +505,9 @@ function PlayPageClient() {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const preLine = i > 0 ? lines[i - 1] : '';
 
       // 只过滤#EXT-X-DISCONTINUITY标识
-      if (
-        !line.includes('#EXT-X-DISCONTINUITY') ||
-        preLine.includes('#EXT-X-DISCONTINUITY')
-      ) {
+      if (!line.includes('#EXT-X-DISCONTINUITY')) {
         filteredLines.push(line);
       }
     }
