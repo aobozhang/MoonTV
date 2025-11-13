@@ -10,6 +10,7 @@ export interface ApiSite {
   api: string;
   name: string;
   detail?: string;
+  isAdult?: boolean;
 }
 
 interface ConfigFileStruct {
@@ -124,6 +125,7 @@ async function initConfig() {
             name: site.name,
             api: site.api,
             detail: site.detail,
+            isAdult: site.isAdult || false,
             from: 'config',
             disabled: false,
           });
@@ -237,6 +239,7 @@ async function initConfig() {
             api: site.api,
             detail: site.detail,
             from: 'config',
+            isAdult: site.isAdult ?? false,
             disabled: false,
           })),
           CustomCategories: customCategories.map((category) => ({
@@ -287,6 +290,7 @@ async function initConfig() {
         name: site.name,
         api: site.api,
         detail: site.detail,
+        isAdult: site.isAdult,
         from: 'config',
         disabled: false,
       })),
@@ -361,6 +365,7 @@ export async function getConfig(): Promise<AdminConfig> {
           name: site.name,
           api: site.api,
           detail: site.detail,
+          isAdult: site.isAdult ?? false,
           from: 'config',
           disabled: false,
         });
@@ -484,6 +489,7 @@ export async function resetConfig() {
       name: site.name,
       api: site.api,
       detail: site.detail,
+      isAdult: site.isAdult,
       from: 'config',
       disabled: false,
     })),
@@ -524,5 +530,6 @@ export async function getAvailableApiSites(): Promise<ApiSite[]> {
     name: s.name,
     api: s.api,
     detail: s.detail,
+    isAdult: s.isAdult,
   }));
 }

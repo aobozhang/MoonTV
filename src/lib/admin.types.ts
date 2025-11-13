@@ -24,6 +24,7 @@ export interface AdminConfig {
     api: string;
     detail?: string;
     from: 'config' | 'custom';
+    isAdult: boolean;
     disabled?: boolean;
   }[];
   CustomCategories: {

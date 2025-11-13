@@ -8,6 +8,7 @@ import { Heart } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
+import { getAvailableApiSites } from '@/lib/config';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -105,6 +106,16 @@ function PlayPageClient() {
   const [currentSource, setCurrentSource] = useState(
     searchParams.get('source') || ''
   );
+  const [isAdult, setIsAdult] = useState(false);
+  // 当前内容是否为成人内容
+  getAvailableApiSites().then((sites) => {
+    sites.forEach((site) => {
+      if (site.key == currentSource) {
+        setIsAdult(site.isAdult || false);
+      }
+    });
+  });
+
   const [currentId, setCurrentId] = useState(searchParams.get('id') || '');
 
   // 搜索所需信息
@@ -1083,7 +1094,8 @@ function PlayPageClient() {
       !currentSourceRef.current ||
       !currentIdRef.current ||
       !videoTitleRef.current ||
-      !detailRef.current?.source_name
+      !detailRef.current?.source_name ||
+      isAdult
     ) {
       return;
     }
