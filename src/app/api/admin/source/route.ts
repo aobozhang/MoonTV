@@ -59,10 +59,11 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'add': {
-        const { key, name, api, detail } = body as {
+        const { key, name, api, isAdult, detail } = body as {
           key?: string;
           name?: string;
           api?: string;
+          isAdult?: boolean;
           detail?: string;
         };
         if (!key || !name || !api) {
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
           name,
           api,
           detail,
+          isAdult: isAdult ?? false,
           from: 'custom',
           disabled: false,
         });
