@@ -8,6 +8,8 @@ import { Heart } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
+import { getAvailableApiSites } from '@/lib/config';
+import { filterAdsFromM3U8 as adFilterModule, detectAds } from '@/lib/adFilter';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -498,21 +500,11 @@ function PlayPageClient() {
   // 去广告相关函数
   function filterAdsFromM3U8(m3u8Content: string): string {
     if (!m3u8Content) return '';
-
-    // 按行分割M3U8内容
-    const lines = m3u8Content.split('\n');
-    const filteredLines = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-
-      // 只过滤#EXT-X-DISCONTINUITY标识
-      if (!line.includes('#EXT-X-DISCONTINUITY')) {
-        filteredLines.push(line);
-      }
+    const result = adFilterModule(m3u8Content, blockAdEnabledRef.current);
+    if (result.stats.adLikelihood > 0) {
+      console.log(`[AdFilter] 广告可能性: ${result.stats.adLikelihood}%, 移除 ${result.stats.removedSegments}/${result.stats.totalSegments} 个片段`);
     }
-
-    return filteredLines.join('\n');
+    return result.filteredM3U8;
   }
 
   // 跳过片头片尾配置相关函数
@@ -633,10 +625,17 @@ function PlayPageClient() {
             stats: any,
             context: any
           ) {
-            // 如果是m3u8文件，处理内容以移除广告分段
+            // 如果是m3u8文件，检测并过滤广告分段
             if (response.data && typeof response.data === 'string') {
-              // 过滤掉广告段 - 实现更精确的广告过滤逻辑
-              response.data = filterAdsFromM3U8(response.data);
+              const adLikelihood = detectAds(response.data);
+              if (adLikelihood > 30) {
+                console.log(`[AdFilter] 检测到广告可能性 ${adLikelihood}%，正在过滤...`);
+              }
+              const result = adFilterModule(response.data, blockAdEnabledRef.current);
+              if (result.stats.adLikelihood > 30) {
+                console.log(`[AdFilter] 已移除 ${result.stats.removedSegments}/${result.stats.totalSegments} 个片段，广告可能性: ${result.stats.adLikelihood}%`);
+              }
+              response.data = result.filteredM3U8;
             }
             return onSuccess(response, stats, context, null);
           };
