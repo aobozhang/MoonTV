@@ -1,0 +1,215 @@
+name: Config Sync
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: 'Force sync even if no upstream change'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  CONFIG_SUBSCRIPTION_URL: ${{ vars.CONFIG_SUBSCRIPTION_URL || 'https://redir.aoboz.workers.dev/?format=1&source=jingjian' }}
+  UPSTREAM_REPO: ${{ vars.UPSTREAM_REPO || 'hafrey1/LunaTV-config' }}
+  UPSTREAM_BRANCH: ${{ vars.UPSTREAM_BRANCH || 'main' }}
+  LAST_COMMIT_FILE: .config-sync/last_commit
+
+jobs:
+  check-and-sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get upstream repo latest commit
+        id: upstream
+        run: |
+          echo "Fetching upstream repo: ${{ env.UPSTREAM_REPO }}@${{ env.UPSTREAM_BRANCH }}"
+          UPSTREAM_SHA=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/commits/${{ env.UPSTREAM_BRANCH }}" \
+            | jq -r '.sha')
+          echo "upstream_sha=$UPSTREAM_SHA" >> $GITHUB_OUTPUT
+          echo "Upstream latest SHA: $UPSTREAM_SHA"
+
+      - name: Read last recorded commit
+        id: last_commit
+        run: |
+          if [ -f "${{ env.LAST_COMMIT_FILE }}" ]; then
+            LAST_SHA=$(cat "${{ env.LAST_COMMIT_FILE }}")
+            echo "last_sha=$LAST_SHA" >> $GITHUB_OUTPUT
+            echo "Last recorded SHA: $LAST_SHA"
+          else
+            echo "last_sha=" >> $GITHUB_OUTPUT
+            echo "No last commit file found"
+          fi
+
+      - name: Check if update needed
+        id: needs_update
+        run: |
+          NEEDS_UPDATE="false"
+          if [ "${{ inputs.force_sync }}" == "true" ]; then
+            NEEDS_UPDATE="true"
+            echo "Force sync requested"
+          elif [ -z "${{ steps.last_commit.outputs.last_sha }}" ]; then
+            NEEDS_UPDATE="true"
+            echo "No previous SHA recorded, will sync"
+          elif [ "${{ steps.upstream.outputs.upstream_sha }}" != "${{ steps.last_commit.outputs.last_sha }}" ]; then
+            NEEDS_UPDATE="true"
+            echo "Upstream SHA changed"
+          else
+            echo "No upstream changes detected"
+          fi
+          echo "needs_update=$NEEDS_UPDATE" >> $GITHUB_OUTPUT
+
+      - name: Fetch remote config
+        if: steps.needs_update.outputs.needs_update == 'true'
+        id: fetch_config
+        run: |
+          echo "Fetching remote config from: ${{ env.CONFIG_SUBSCRIPTION_URL }}"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -H "Accept: application/json" "${{ env.CONFIG_SUBSCRIPTION_URL }}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed to fetch config, HTTP: $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
+          fi
+
+          echo "$BODY" > remote-config.json
+          echo "Remote config fetched successfully"
+
+      - name: Parse and compare api_site
+        if: steps.needs_update.outputs.needs_update == 'true'
+        id: diff
+        run: |
+          echo "Parsing config.json and remote config..."
+
+          LOCAL_CONFIG=$(cat config.json)
+
+          if [ -f remote-config.json ]; then
+            REMOTE_API_SITES=$(echo "$(cat remote-config.json)" | jq -r '.api_site // {}')
+
+            echo "=== Diff Report ==="
+
+            LOCAL_KEYS=$(echo "$LOCAL_CONFIG" | jq -r '.api_site | keys[]')
+            REMOTE_KEYS=$(echo "$REMOTE_API_SITES" | jq -r 'keys[]')
+
+            ADDED=""
+            for key in $REMOTE_KEYS; do
+              if ! echo "$LOCAL_KEYS" | grep -q "^$key$"; then
+                ADDED="$ADDED $key"
+              fi
+            done
+
+            REMOVED=""
+            for key in $LOCAL_KEYS; do
+              if ! echo "$REMOTE_KEYS" | grep -q "^$key$"; then
+                REMOVED="$REMOVED $key"
+              fi
+            done
+
+            CHANGED=""
+            for key in $LOCAL_KEYS; do
+              if echo "$REMOTE_KEYS" | grep -q "^$key$"; then
+                LOCAL_API=$(echo "$LOCAL_CONFIG" | jq -r ".api_site.\"$key\".api // empty")
+                LOCAL_NAME=$(echo "$LOCAL_CONFIG" | jq -r ".api_site.\"$key\".name // empty")
+                LOCAL_DETAIL=$(echo "$LOCAL_CONFIG" | jq -r ".api_site.\"$key\".detail // empty")
+
+                REMOTE_API=$(echo "$REMOTE_API_SITES" | jq -r ".\"$key\".api // empty")
+                REMOTE_NAME=$(echo "$REMOTE_API_SITES" | jq -r ".\"$key\".name // empty")
+                REMOTE_DETAIL=$(echo "$REMOTE_API_SITES" | jq -r ".\"$key\".detail // empty")
+
+                if [ "$LOCAL_API" != "$REMOTE_API" ] || [ "$LOCAL_NAME" != "$REMOTE_NAME" ] || [ "$LOCAL_DETAIL" != "$REMOTE_DETAIL" ]; then
+                  CHANGED="$CHANGED $key"
+                fi
+              fi
+            done
+
+            echo "Added: $ADDED"
+            echo "Removed: $REMOVED"
+            echo "Changed: $CHANGED"
+
+            DIFF_SUMMARY=""
+            [ -n "$ADDED" ] && DIFF_SUMMARY="${DIFF_SUMMARY}+$(echo $ADDED | tr ' ' ',')"
+            [ -n "$REMOVED" ] && DIFF_SUMMARY="${DIFF_SUMMARY}-$(echo $REMOVED | tr ' ' ',')"
+            [ -n "$CHANGED" ] && DIFF_SUMMARY="${DIFF_SUMMARY}~$(echo $CHANGED | tr ' ' ',')"
+
+            echo "diff_summary=$DIFF_SUMMARY" >> $GITHUB_OUTPUT
+
+            HAS_CHANGES="false"
+            [ -n "$ADDED" ] && HAS_CHANGES="true"
+            [ -n "$REMOVED" ] && HAS_CHANGES="true"
+            [ -n "$CHANGED" ] && HAS_CHANGES="true"
+            echo "has_changes=$HAS_CHANGES" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "diff_summary=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update config.json
+        if: steps.diff.outputs.has_changes == 'true'
+        run: |
+          echo "Updating config.json with remote api_site..."
+
+          REMOTE_API_SITES=$(echo "$(cat remote-config.json)" | jq -r '.api_site // {}')
+
+          jq --argjson remote_sites "$REMOTE_API_SITES" '
+            .api_site |= (. * $remote_sites)
+          ' config.json > config.json.tmp && mv config.json.tmp config.json
+
+          echo "config.json updated"
+          cat config.json | jq '.api_site | keys | length' | xargs -I {} echo "Total api_site entries: {}"
+
+      - name: Save upstream SHA
+        if: steps.needs_update.outputs.needs_update == 'true'
+        run: |
+          mkdir -p .config-sync
+          echo "${{ steps.upstream.outputs.upstream_sha }}" > ${{ env.LAST_COMMIT_FILE }}
+          echo "Upstream SHA saved: ${{ steps.upstream.outputs.upstream_sha }}"
+
+      - name: Commit and push
+        if: steps.diff.outputs.has_changes == 'true'
+        run: |
+          echo "Committing config changes..."
+          git add config.json ${{ env.LAST_COMMIT_FILE }}
+
+          DIFF_MSG="${{ steps.diff.outputs.diff_summary }}"
+          if [ -z "$DIFF_MSG" ]; then
+            DIFF_MSG="config update"
+          fi
+
+          git commit -m "chore: sync config from upstream ($DIFF_MSG)"
+          git push
+
+          echo "Config sync completed and pushed"
+
+      - name: No changes needed
+        if: steps.diff.outputs.has_changes != 'true'
+        run: |
+          echo "No api_site changes detected, skipping commit"
+
+      - name: Save last commit SHA even if no changes
+        if: steps.needs_update.outputs.needs_update == 'true' && steps.diff.outputs.has_changes != 'true'
+        run: |
+          mkdir -p .config-sync
+          echo "${{ steps.upstream.outputs.upstream_sha }}" > ${{ env.LAST_COMMIT_FILE }}
+          git add ${{ env.LAST_COMMIT_FILE }}
+          git commit -m "chore: update upstream SHA tracking"
+          git push
+          echo "Upstream SHA updated without config changes"
