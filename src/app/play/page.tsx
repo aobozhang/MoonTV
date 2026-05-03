@@ -2099,7 +2099,7 @@ function PlayPageClient() {
                 {videoCover ? (
                   <>
                     <img
-                      src={processImageUrl(videoCover)}
+                      src={processImageUrl(videoCover) || '/placeholder.svg'}
                       alt={videoTitle}
                       className='w-full h-full object-cover'
                     />
