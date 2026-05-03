@@ -205,7 +205,7 @@ jobs:
           echo "No api_site changes detected, skipping commit"
 
       - name: Save last commit SHA even if no changes
-        if: steps.needs_update.outputs.steps.needs_update.outputs.needs_update == 'true' && steps.diff.outputs.has_changes != 'true'
+        if: steps.needs_update.outputs.needs_update == 'true' && steps.diff.outputs.has_changes != 'true'
         run: |
           mkdir -p .config-sync
           echo "${{ steps.upstream.outputs.upstream_sha }}" > ${{ env.LAST_COMMIT_FILE }}
