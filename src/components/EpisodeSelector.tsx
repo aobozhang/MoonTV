@@ -506,12 +506,15 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                         <div className='flex-shrink-0 w-12 h-20 bg-gray-300 dark:bg-gray-600 rounded overflow-hidden'>
                           {source.episodes && source.episodes.length > 0 && (
                             <img
-                              src={processImageUrl(source.poster)}
+                              src={
+                                processImageUrl(source.poster) ||
+                                '/placeholder.svg'
+                              }
                               alt={source.title}
                               className='w-full h-full object-cover'
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
+                                target.src = '/placeholder.svg';
                               }}
                             />
                           )}

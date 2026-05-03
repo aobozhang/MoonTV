@@ -46,10 +46,87 @@ function SearchPageClient() {
     return getDefaultAggregate() ? 'agg' : 'all';
   });
 
-  // 聚合后的结果（按标题和年份分组）
+  // 安全搜索状态
+  const getDefaultSafeSearch = () => {
+    if (typeof window !== 'undefined') {
+      const userSetting = localStorage.getItem('safeSearchEnabled');
+      if (userSetting !== null) {
+        return JSON.parse(userSetting);
+      }
+    }
+    return true; // 默认开启安全搜索
+  };
+
+  const [safeSearchEnabled, setSafeSearchEnabled] = useState(() => {
+    return getDefaultSafeSearch();
+  });
+
+  // 切换安全搜索并保存设置
+  const toggleSafeSearch = () => {
+    const newValue = !safeSearchEnabled;
+    setSafeSearchEnabled(newValue);
+    localStorage.setItem('safeSearchEnabled', JSON.stringify(newValue));
+  };
+
+  // 检测源名称是否包含AV或🔞
+  const isAdultSource = (sourceName: string): boolean => {
+    if (!sourceName) return false;
+    return sourceName.includes('AV') || sourceName.includes('🔞');
+  };
+
+  // 根据安全搜索设置处理结果
+  const processedResults = useMemo(() => {
+    let results = [...searchResults];
+
+    if (safeSearchEnabled) {
+      // 开启安全搜索：过滤掉包含AV或🔞的源
+      results = results.filter((r) => !isAdultSource(r.source_name || ''));
+    } else {
+      // 关闭安全搜索：把包含AV或🔞的源排在后面
+      const safeResults: SearchResult[] = [];
+      const adultResults: SearchResult[] = [];
+
+      results.forEach((r) => {
+        if (isAdultSource(r.source_name || '')) {
+          adultResults.push(r);
+        } else {
+          safeResults.push(r);
+        }
+      });
+
+      // 分别排序后合并
+      const sortFn = (a: SearchResult, b: SearchResult) => {
+        const aExactMatch = a.title === searchQuery.trim();
+        const bExactMatch = b.title === searchQuery.trim();
+
+        if (aExactMatch && !bExactMatch) return -1;
+        if (!aExactMatch && bExactMatch) return 1;
+
+        if (a.year === b.year) {
+          return a.title.localeCompare(b.title);
+        } else {
+          if (a.year === 'unknown' && b.year === 'unknown') {
+            return 0;
+          } else if (a.year === 'unknown') {
+            return 1;
+          } else if (b.year === 'unknown') {
+            return -1;
+          } else {
+            return parseInt(a.year) > parseInt(b.year) ? -1 : 1;
+          }
+        }
+      };
+
+      results = [...safeResults.sort(sortFn), ...adultResults.sort(sortFn)];
+    }
+
+    return results;
+  }, [searchResults, safeSearchEnabled, searchQuery]);
+
+  // 聚合后的结果（按标题和年份分组）- 使用处理后的结果
   const aggregatedResults = useMemo(() => {
     const map = new Map<string, SearchResult[]>();
-    searchResults.forEach((item) => {
+    processedResults.forEach((item) => {
       // 使用 title + year + type 作为键，year 必然存在，但依然兜底 'unknown'
       const key = `${item.title.replaceAll(' ', '')}-${
         item.year || 'unknown'
@@ -90,7 +167,7 @@ function SearchPageClient() {
         }
       }
     });
-  }, [searchResults]);
+  }, [processedResults]);
 
   useEffect(() => {
     // 无搜索参数时聚焦搜索框
@@ -271,29 +348,47 @@ function SearchPageClient() {
             </div>
           ) : showResults ? (
             <section className='mb-12'>
-              {/* 标题 + 聚合开关 */}
+              {/* 标题 + 聚合开关 + 安全搜索开关 */}
               <div className='mb-8 flex items-center justify-between'>
                 <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
                   搜索结果
                 </h2>
-                {/* 聚合开关 */}
-                <label className='flex items-center gap-2 cursor-pointer select-none'>
-                  <span className='text-sm text-gray-700 dark:text-gray-300'>
-                    聚合
-                  </span>
-                  <div className='relative'>
-                    <input
-                      type='checkbox'
-                      className='sr-only peer'
-                      checked={viewMode === 'agg'}
-                      onChange={() =>
-                        setViewMode(viewMode === 'agg' ? 'all' : 'agg')
-                      }
-                    />
-                    <div className='w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600'></div>
-                    <div className='absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4'></div>
-                  </div>
-                </label>
+                <div className='flex items-center gap-4'>
+                  {/* 安全搜索开关 */}
+                  <label className='flex items-center gap-2 cursor-pointer select-none'>
+                    <span className='text-sm text-gray-700 dark:text-gray-300'>
+                      安全搜索
+                    </span>
+                    <div className='relative'>
+                      <input
+                        type='checkbox'
+                        className='sr-only peer'
+                        checked={safeSearchEnabled}
+                        onChange={toggleSafeSearch}
+                      />
+                      <div className='w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600'></div>
+                      <div className='absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4'></div>
+                    </div>
+                  </label>
+                  {/* 聚合开关 */}
+                  <label className='flex items-center gap-2 cursor-pointer select-none'>
+                    <span className='text-sm text-gray-700 dark:text-gray-300'>
+                      聚合
+                    </span>
+                    <div className='relative'>
+                      <input
+                        type='checkbox'
+                        className='sr-only peer'
+                        checked={viewMode === 'agg'}
+                        onChange={() =>
+                          setViewMode(viewMode === 'agg' ? 'all' : 'agg')
+                        }
+                      />
+                      <div className='w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600'></div>
+                      <div className='absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4'></div>
+                    </div>
+                  </label>
+                </div>
               </div>
               <div
                 key={`search-results-${viewMode}`}
@@ -315,7 +410,7 @@ function SearchPageClient() {
                         </div>
                       );
                     })
-                  : searchResults.map((item) => (
+                  : processedResults.map((item) => (
                       <div
                         key={`all-${item.source}-${item.id}`}
                         className='w-full'
@@ -339,7 +434,7 @@ function SearchPageClient() {
                         />
                       </div>
                     ))}
-                {searchResults.length === 0 && (
+                {processedResults.length === 0 && (
                   <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
                     未找到相关结果
                   </div>

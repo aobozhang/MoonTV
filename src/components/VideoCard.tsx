@@ -98,6 +98,7 @@ export default function VideoCard({
 
   const actualTitle = aggregateData?.first.title ?? title;
   const actualPoster = aggregateData?.first.poster ?? poster;
+  const posterSrc = actualPoster || '/placeholder.svg';
   const actualSource = aggregateData?.first.source ?? source;
   const actualId = aggregateData?.first.id ?? id;
   const actualDoubanId = aggregateData?.mostFrequentDoubanId ?? douban_id;
@@ -276,7 +277,7 @@ export default function VideoCard({
         {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
         {/* 图片 */}
         <Image
-          src={processImageUrl(actualPoster)}
+          src={processImageUrl(posterSrc)}
           alt={actualTitle}
           fill
           className='absolute inset-0 object-cover blur'
@@ -289,13 +290,13 @@ export default function VideoCard({
             if (!img.dataset.retried) {
               img.dataset.retried = 'true';
               setTimeout(() => {
-                img.src = processImageUrl(actualPoster);
+                img.src = processImageUrl(posterSrc);
               }, 2000);
             }
           }}
         />
         <Image
-          src={processImageUrl(actualPoster)}
+          src={processImageUrl(posterSrc)}
           alt={actualTitle}
           fill
           className='object-contain'
@@ -308,7 +309,7 @@ export default function VideoCard({
             if (!img.dataset.retried) {
               img.dataset.retried = 'true';
               setTimeout(() => {
-                img.src = processImageUrl(actualPoster);
+                img.src = processImageUrl(posterSrc);
               }, 2000);
             }
           }}
