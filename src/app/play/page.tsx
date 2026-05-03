@@ -1237,6 +1237,7 @@ function PlayPageClient() {
           total_episodes: detailRef.current?.episodes.length || 1,
           save_time: Date.now(),
           search_title: searchTitle,
+          type_name: detailRef.current?.type_name,
         });
         setFavorited(true);
       }
