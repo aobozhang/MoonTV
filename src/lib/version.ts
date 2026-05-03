@@ -4,6 +4,12 @@
 
 const CURRENT_VERSION = '1.1.2';
 
+export enum UpdateStatus {
+  HAS_UPDATE = 'has_update',
+  NO_UPDATE = 'no_update',
+  FETCH_FAILED = 'fetch_failed',
+}
+
 const VERSION_CHECK_URLS = [
   'https://raw.githubusercontent.com/aobozhang/MoonTV/main/VERSION.txt',
   'https://cdn.jsdelivr.net/gh/aobozhang/moontv/VERSION.txt',
@@ -141,4 +147,4 @@ function compareVersions(remoteVersion: string): UpdateStatus {
 }
 
 // 导出当前版本号供其他地方使用
-export { CURRENT_VERSION };
+export { CURRENT_VERSION, UpdateStatus };
