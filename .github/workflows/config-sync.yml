@@ -226,7 +226,7 @@ Triggered by: github-actions"
           echo "No api_site changes detected, skipping commit"
 
       - name: Save last commit SHA even if no changes
-        if: needs_update == 'true' && steps.diff.outputs.has_changes != 'true'
+        if: ${{ needs_update == 'true' && steps.diff.outputs.has_changes != 'true' }}
         run: |
           mkdir -p .config-sync
           echo "${{ steps.upstream.outputs.upstream_sha }}" > ${{ env.LAST_COMMIT_FILE }}
