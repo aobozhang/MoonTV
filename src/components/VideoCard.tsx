@@ -282,7 +282,7 @@ export default function VideoCard({
           className='absolute inset-0 object-cover blur'
           referrerPolicy='no-referrer'
           loading='lazy'
-          onLoadingComplete={() => setIsLoading(true)}
+          onLoad={() => setIsLoading(true)}
           onError={(e) => {
             // 图片加载失败时的重试机制
             const img = e.target as HTMLImageElement;
@@ -301,7 +301,7 @@ export default function VideoCard({
           className='object-contain'
           referrerPolicy='no-referrer'
           loading='lazy'
-          onLoadingComplete={() => setIsLoading(true)}
+          onLoad={() => setIsLoading(true)}
           onError={(e) => {
             // 图片加载失败时的重试机制
             const img = e.target as HTMLImageElement;

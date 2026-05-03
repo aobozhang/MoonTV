@@ -723,6 +723,46 @@ function PlayPageClient() {
         return;
       }
       setLoading(true);
+
+      // 未分类内容（不属于电影、剧集、动漫、综艺）直接使用当前源，跳过多源搜索和优选
+      if (currentSource && currentId) {
+        // 先获取详情以检查类型
+        setLoadingStage('fetching');
+        setLoadingMessage('🎬 正在获取视频详情...');
+        const directDetail = await fetchSourceDetail(currentSource, currentId);
+        if (directDetail.length === 0) {
+          setError('未找到匹配结果');
+          setLoading(false);
+          return;
+        }
+        const detail = directDetail[0];
+        const typeName = detail.type_name || '';
+        if (!VALID_PLAY_HISTORY_TYPES.includes(typeName)) {
+          // 未分类内容，直接使用当前源
+          setCurrentSource(detail.source);
+          setCurrentId(detail.id);
+          setVideoYear(detail.year);
+          setVideoTitle(detail.title || videoTitleRef.current);
+          setVideoCover(detail.poster);
+          setVideoDoubanId(detail.douban_id || 0);
+          setDetail(detail);
+          setAvailableSources([detail]);
+          if (currentEpisodeIndex >= detail.episodes.length) {
+            setCurrentEpisodeIndex(0);
+          }
+          setLoadingStage('ready');
+          setLoadingMessage('✨ 准备就绪，即将开始播放...');
+          setTimeout(() => {
+            setLoading(false);
+          }, 1000);
+          return;
+        }
+        // 非未分类内容，继续执行多源搜索和优选流程
+        setVideoYear(detail.year);
+        setVideoTitle(detail.title || videoTitleRef.current);
+        setVideoCover(detail.poster);
+      }
+
       setLoadingStage(currentSource && currentId ? 'fetching' : 'searching');
       setLoadingMessage(
         currentSource && currentId
@@ -1082,8 +1122,21 @@ function PlayPageClient() {
   // ---------------------------------------------------------------------------
   // 播放记录相关
   // ---------------------------------------------------------------------------
-  // 有效的播放历史分类
+  // 有效的播放历史分类（支持子分类匹配）
   const VALID_PLAY_HISTORY_TYPES = ['电影', '剧集', '动漫', '综艺'];
+
+  // 检查分类是否有效（支持子分类匹配）
+  const isValidPlayHistoryType = (typeName: string): boolean => {
+    if (!typeName) return false;
+    // 精确匹配
+    if (VALID_PLAY_HISTORY_TYPES.includes(typeName)) return true;
+    // 子分类匹配：剧情片、喜剧片 -> 电影；国产剧、美剧 -> 剧集；日本动画 -> 动漫
+    if (typeName.includes('电影') || typeName.includes('片')) return true;
+    if (typeName.includes('剧')) return true;
+    if (typeName.includes('动漫') || typeName.includes('动画')) return true;
+    if (typeName.includes('综艺') || typeName.includes('真人秀')) return true;
+    return false;
+  };
 
   // 保存播放进度
   const saveCurrentPlayProgress = async () => {
@@ -1100,7 +1153,7 @@ function PlayPageClient() {
 
     // 只记录电影、剧集、动漫、综艺分类的内容
     const typeName = detailRef.current?.type_name || '';
-    if (!VALID_PLAY_HISTORY_TYPES.includes(typeName)) {
+    if (!isValidPlayHistoryType(typeName)) {
       return;
     }
 
