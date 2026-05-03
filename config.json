@@ -339,7 +339,8 @@
     "swzy": {
       "api": "https://siwazyw.tv/api.php/provide/vod",
       "name": "AV-丝袜资源",
-      "detail": "https://siwazyw.tv"
+      "detail": "https://siwazyw.tv",
+      "isAdult": true
     },
     "iqiyizyapi.com": {
       "name": "🎬-爱奇艺-",

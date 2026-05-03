@@ -141,4 +141,4 @@ function compareVersions(remoteVersion: string): UpdateStatus {
 }
 
 // 导出当前版本号供其他地方使用
-export { compareVersions, CURRENT_VERSION };
+export { CURRENT_VERSION };
