@@ -8,8 +8,7 @@ import { Heart } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
-import { getAvailableApiSites } from '@/lib/config';
-import { filterAdsFromM3U8 as adFilterModule, detectAds } from '@/lib/adFilter';
+import { detectAds, filterAdsFromM3U8 as adFilterModule } from '@/lib/adFilter';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -497,16 +496,6 @@ function PlayPageClient() {
     }
   };
 
-  // 去广告相关函数
-  function filterAdsFromM3U8(m3u8Content: string): string {
-    if (!m3u8Content) return '';
-    const result = adFilterModule(m3u8Content, blockAdEnabledRef.current);
-    if (result.stats.adLikelihood > 0) {
-      console.log(`[AdFilter] 广告可能性: ${result.stats.adLikelihood}%, 移除 ${result.stats.removedSegments}/${result.stats.totalSegments} 个片段`);
-    }
-    return result.filteredM3U8;
-  }
-
   // 跳过片头片尾配置相关函数
   const handleSkipConfigChange = async (newConfig: {
     enable: boolean;
@@ -629,11 +618,18 @@ function PlayPageClient() {
             if (response.data && typeof response.data === 'string') {
               const adLikelihood = detectAds(response.data);
               if (adLikelihood > 30) {
-                console.log(`[AdFilter] 检测到广告可能性 ${adLikelihood}%，正在过滤...`);
+                console.log(
+                  `[AdFilter] 检测到广告可能性 ${adLikelihood}%，正在过滤...`
+                );
               }
-              const result = adFilterModule(response.data, blockAdEnabledRef.current);
+              const result = adFilterModule(
+                response.data,
+                blockAdEnabledRef.current
+              );
               if (result.stats.adLikelihood > 30) {
-                console.log(`[AdFilter] 已移除 ${result.stats.removedSegments}/${result.stats.totalSegments} 个片段，广告可能性: ${result.stats.adLikelihood}%`);
+                console.log(
+                  `[AdFilter] 已移除 ${result.stats.removedSegments}/${result.stats.totalSegments} 个片段，广告可能性: ${result.stats.adLikelihood}%`
+                );
               }
               response.data = result.filteredM3U8;
             }

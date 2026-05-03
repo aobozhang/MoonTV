@@ -53,7 +53,11 @@ function parseSegments(lines: string[]): SegmentInfo[] {
       if (match) {
         currentDuration = parseFloat(match[1]);
       }
-    } else if (!line.startsWith('#') && line !== '\ && currentDuration !== null) {
+    } else if (
+      !line.startsWith('#') &&
+      line !== '' &&
+      currentDuration !== null
+    ) {
       segments.push({
         duration: currentDuration,
         isAd: false,
@@ -148,11 +152,11 @@ function calculateAdLikelihood(
  */
 export function filterAdsFromM3U8(
   m3u8Content: string,
-  enableFilter: boolean = true
+  enableFilter = true
 ): AdFilterResult {
   if (!m3u8Content || !enableFilter) {
     return {
-      filteredM3U8: m3u8Content || '\,
+      filteredM3U8: m3u8Content || '',
       stats: {
         totalSegments: 0,
         removedSegments: 0,
@@ -195,7 +199,7 @@ export function filterAdsFromM3U8(
         }
         break;
       }
-      if (lines[i].trim() !== '\ && !lines[i].trim().startsWith('#')) {
+      if (lines[i].trim() !== '' && !lines[i].trim().startsWith('#')) {
         break;
       }
     }
