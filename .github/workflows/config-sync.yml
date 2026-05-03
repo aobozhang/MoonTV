@@ -77,7 +77,7 @@ jobs:
           echo "needs_update=$NEEDS_UPDATE" >> $GITHUB_OUTPUT
 
       - name: Fetch remote config
-        if: needs_update == 'true'
+        if: steps.needs_update.outputs.needs_update == 'true'
         id: fetch_config
         run: |
           echo "Fetching remote config from: ${{ env.CONFIG_SUBSCRIPTION_URL }}"
@@ -95,7 +95,7 @@ jobs:
           echo "Remote config fetched successfully"
 
       - name: Parse and compare api_site
-        if: needs_update == 'true'
+        if: steps.needs_update.outputs.needs_update == 'true'
         id: diff
         run: |
           echo "Parsing config.json and remote config..."
@@ -177,7 +177,7 @@ jobs:
           cat config.json | jq '.api_site | keys | length' | xargs -I {} echo "Total api_site entries: {}"
 
       - name: Save upstream SHA
-        if: needs_update == 'true'
+        if: steps.needs_update.outputs.needs_update == 'true'
         run: |
           mkdir -p .config-sync
           echo "${{ steps.upstream.outputs.upstream_sha }}" > ${{ env.LAST_COMMIT_FILE }}
@@ -205,7 +205,7 @@ jobs:
           echo "No api_site changes detected, skipping commit"
 
       - name: Save last commit SHA even if no changes
-        if: steps.needs_update.outputs.needs_update == 'true' && steps.diff.outputs.has_changes != 'true'
+        if: steps.needs_update.outputs.steps.needs_update.outputs.needs_update == 'true' && steps.diff.outputs.has_changes != 'true'
         run: |
           mkdir -p .config-sync
           echo "${{ steps.upstream.outputs.upstream_sha }}" > ${{ env.LAST_COMMIT_FILE }}
