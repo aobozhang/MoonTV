@@ -2,19 +2,11 @@
 
 'use client';
 
-const CURRENT_VERSION = '1.1.1';
+const CURRENT_VERSION = '1.1.2';
 
-// 版本检查结果枚举
-export enum UpdateStatus {
-  HAS_UPDATE = 'has_update', // 有新版本
-  NO_UPDATE = 'no_update', // 无新版本
-  FETCH_FAILED = 'fetch_failed', // 获取失败
-}
-
-// 远程版本检查URL配置
 const VERSION_CHECK_URLS = [
-  'https://raw.githubusercontent.com/LunaTechLab/MoonTV/main/VERSION.txt',
-  'https://cdn.jsdelivr.net/gh/LunaTechLab/moontv/VERSION.txt',
+  'https://raw.githubusercontent.com/aobozhang/MoonTV/main/VERSION.txt',
+  'https://cdn.jsdelivr.net/gh/aobozhang/moontv/VERSION.txt',
 ];
 
 /**
