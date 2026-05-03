@@ -2,7 +2,7 @@ name: Config Sync
 
 on:
   schedule:
-    - cron: "0 */6 * * *" # every 6 hours
+    - cron: "0 */6 * * *"
   workflow_dispatch:
     inputs:
       force_sync:
@@ -15,7 +15,7 @@ env:
   CONFIG_SUBSCRIPTION_URL: ${{ vars.CONFIG_SUBSCRIPTION_URL || 'https://redir.aoboz.workers.dev/?format=1&source=jingjian' }}
   UPSTREAM_REPO: ${{ vars.UPSTREAM_REPO || 'hafrey1/LunaTV-config' }}
   UPSTREAM_BRANCH: ${{ vars.UPSTREAM_BRANCH || 'main' }}
-  LAST_COMMIT_FILE: ".config-sync/last_commit"
+  LAST_COMMIT_FILE: .config-sync/last_commit
 
 jobs:
   check-and-sync:
@@ -93,7 +93,6 @@ jobs:
 
           echo "$BODY" > remote-config.json
           echo "Remote config fetched successfully"
-          cat remote-config.json | jq 'keys' 2>/dev/null || echo "Config JSON structure may vary"
 
       - name: Parse and compare api_site
         if: needs_update == 'true'
@@ -101,22 +100,16 @@ jobs:
         run: |
           echo "Parsing config.json and remote config..."
 
-          # Read local config
           LOCAL_CONFIG=$(cat config.json)
-          echo "Local api_site keys: $(echo "$LOCAL_CONFIG" | jq '.api_site | keys | length')"
 
-          # Parse remote config api_site
           if [ -f remote-config.json ]; then
             REMOTE_API_SITES=$(echo "$(cat remote-config.json)" | jq -r '.api_site // {}')
 
-            # Build jq expression to compare and generate diff
             echo "=== Diff Report ==="
 
-            # Get all keys from both
             LOCAL_KEYS=$(echo "$LOCAL_CONFIG" | jq -r '.api_site | keys[]')
             REMOTE_KEYS=$(echo "$REMOTE_API_SITES" | jq -r 'keys[]')
 
-            # Find added (in remote but not in local)
             ADDED=""
             for key in $REMOTE_KEYS; do
               if ! echo "$LOCAL_KEYS" | grep -q "^$key$"; then
@@ -124,7 +117,6 @@ jobs:
               fi
             done
 
-            # Find removed (in local but not in remote)
             REMOVED=""
             for key in $LOCAL_KEYS; do
               if ! echo "$REMOTE_KEYS" | grep -q "^$key$"; then
@@ -132,7 +124,6 @@ jobs:
               fi
             done
 
-            # Find changed (exists in both but different)
             CHANGED=""
             for key in $LOCAL_KEYS; do
               if echo "$REMOTE_KEYS" | grep -q "^$key$"; then
@@ -154,7 +145,6 @@ jobs:
             echo "Removed: $REMOVED"
             echo "Changed: $CHANGED"
 
-            # Write diff info for commit message
             DIFF_SUMMARY=""
             [ -n "$ADDED" ] && DIFF_SUMMARY="${DIFF_SUMMARY}+$(echo $ADDED | tr ' ' ',')"
             [ -n "$REMOVED" ] && DIFF_SUMMARY="${DIFF_SUMMARY}-$(echo $REMOVED | tr ' ' ',')"
@@ -162,7 +152,6 @@ jobs:
 
             echo "diff_summary=$DIFF_SUMMARY" >> $GITHUB_OUTPUT
 
-            # Determine if there are actual changes
             HAS_CHANGES="false"
             [ -n "$ADDED" ] && HAS_CHANGES="true"
             [ -n "$REMOVED" ] && HAS_CHANGES="true"
@@ -178,11 +167,8 @@ jobs:
         run: |
           echo "Updating config.json with remote api_site..."
 
-          # Get remote api_site
           REMOTE_API_SITES=$(echo "$(cat remote-config.json)" | jq -r '.api_site // {}')
 
-          # Update config.json using jq
-          # Merge: remote adds/overwrites, local keys not in remote are kept
           jq --argjson remote_sites "$REMOTE_API_SITES" '
             .api_site |= (. * $remote_sites)
           ' config.json > config.json.tmp && mv config.json.tmp config.json
@@ -208,17 +194,10 @@ jobs:
             DIFF_MSG="config update"
           fi
 
-          COMMIT_MSG="chore: sync config from upstream
-
-Upstream: ${{ env.UPSTREAM_REPO }}@${{ steps.upstream.outputs.upstream_sha }}
-Diff: $DIFF_MSG
-Triggered by: github-actions"
-
-          git commit -m "$COMMIT_MSG"
+          git commit -m "chore: sync config from upstream ($DIFF_MSG)"
           git push
 
           echo "Config sync completed and pushed"
-          echo "diff_summary=$DIFF_MSG" >> $GITHUB_OUTPUT
 
       - name: No changes needed
         if: steps.diff.outputs.has_changes != 'true'
@@ -231,6 +210,6 @@ Triggered by: github-actions"
           mkdir -p .config-sync
           echo "${{ steps.upstream.outputs.upstream_sha }}" > ${{ env.LAST_COMMIT_FILE }}
           git add ${{ env.LAST_COMMIT_FILE }}
-          git commit -m "chore: update upstream SHA tracking" || echo "No changes to commit"
+          git commit -m "chore: update upstream SHA tracking"
           git push
           echo "Upstream SHA updated without config changes"
