@@ -28,9 +28,10 @@ jobs:
       - name: Build
         run: pnpm gen:runtime && pnpm gen:manifest && pnpm next build
 
-      - name: Deploy to Cloudflare Pages
+      - name: Install Wrangler and Deploy
         run: |
-          npx wrangler pages deploy .next --project-name=MoonTV --branch=production
+          npm install -g wrangler
+          wrangler pages deploy .next --project-name=MoonTV --branch=production
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
