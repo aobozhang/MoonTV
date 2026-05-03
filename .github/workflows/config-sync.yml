@@ -169,9 +169,15 @@ jobs:
 
           REMOTE_API_SITES=$(echo "$(cat remote-config.json)" | jq -r '.api_site // {}')
 
-          jq --argjson remote_sites "$REMOTE_API_SITES" '
-            .api_site |= (. * $remote_sites)
-          ' config.json > config.json.tmp && mv config.json.tmp config.json
+          # 如果远端配置存在且非空，则完全覆盖本地 api_site；否则保持本地配置
+          if [ "$(echo "$REMOTE_API_SITES" | jq 'length')" -gt 0 ]; then
+            echo "Remote config found, replacing local api_site with remote..."
+            jq --argjson remote_sites "$REMOTE_API_SITES" '
+              .api_site = $remote_sites
+            ' config.json > config.json.tmp && mv config.json.tmp config.json
+          else
+            echo "No remote api_site config, keeping local..."
+          fi
 
           echo "config.json updated"
           cat config.json | jq '.api_site | keys | length' | xargs -I {} echo "Total api_site entries: {}"
