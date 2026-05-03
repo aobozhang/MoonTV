@@ -8,32 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build
-        run: pnpm gen:runtime && pnpm gen:manifest && pnpm next build
-        env:
-          NODE_VERSION: '22'
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .next --project-name=MoonTV --branch=production
+      - name: Trigger Cloudflare Pages deployment
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/e3775d58-a946-4690-a74d-78cce56ee2ce"
