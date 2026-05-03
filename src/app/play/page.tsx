@@ -1082,6 +1082,9 @@ function PlayPageClient() {
   // ---------------------------------------------------------------------------
   // 播放记录相关
   // ---------------------------------------------------------------------------
+  // 有效的播放历史分类
+  const VALID_PLAY_HISTORY_TYPES = ['电影', '剧集', '动漫', '综艺'];
+
   // 保存播放进度
   const saveCurrentPlayProgress = async () => {
     if (
@@ -1092,6 +1095,12 @@ function PlayPageClient() {
       !detailRef.current?.source_name ||
       isAdult
     ) {
+      return;
+    }
+
+    // 只记录电影、剧集、动漫、综艺分类的内容
+    const typeName = detailRef.current?.type_name || '';
+    if (!VALID_PLAY_HISTORY_TYPES.includes(typeName)) {
       return;
     }
 
