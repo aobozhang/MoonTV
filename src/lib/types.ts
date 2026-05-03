@@ -23,6 +23,7 @@ export interface Favorite {
   cover: string;
   save_time: number; // 记录保存时间（时间戳）
   search_title: string; // 搜索时使用的标题
+  type_name?: string; // 分类名称：电影、剧集、动漫、综艺
 }
 
 // 存储接口

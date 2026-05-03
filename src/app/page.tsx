@@ -62,9 +62,15 @@ function HomeClient() {
     source_name: string;
     currentEpisode?: number;
     search_title?: string;
+    year?: string;
+    type_name?: string;
   };
 
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
+  const [favoriteSubTab, setFavoriteSubTab] = useState<
+    '电影' | '剧集' | '动漫' | '综艺' | '未分类'
+  >('电影');
+  const [showAllContent, setShowAllContent] = useState(false);
 
   useEffect(() => {
     const fetchRecommendData = async () => {
@@ -133,6 +139,7 @@ function HomeClient() {
           source_name: fav.source_name,
           currentEpisode,
           search_title: fav?.search_title,
+          type_name: fav?.type_name,
         } as FavoriteItem;
       });
     setFavoriteItems(sorted);
@@ -200,23 +207,84 @@ function HomeClient() {
                   </button>
                 )}
               </div>
-              <div className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'>
-                {favoriteItems.map((item) => (
-                  <div key={item.id + item.source} className='w-full'>
-                    <VideoCard
-                      query={item.search_title}
-                      {...item}
-                      from='favorite'
-                      type={item.episodes > 1 ? 'tv' : ''}
-                    />
-                  </div>
-                ))}
-                {favoriteItems.length === 0 && (
-                  <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                    暂无收藏内容
-                  </div>
-                )}
+
+              {/* 子分类 Tab */}
+              <div className='mb-4 flex items-center justify-between'>
+                <div className='flex items-center gap-1 flex-wrap'>
+                  {(['电影', '剧集', '动漫', '综艺'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setFavoriteSubTab(tab)}
+                      className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                        favoriteSubTab === tab
+                          ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800'
+                          : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                  {showAllContent && (
+                    <button
+                      onClick={() => setFavoriteSubTab('未分类')}
+                      className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                        favoriteSubTab === '未分类'
+                          ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800'
+                          : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      未分类
+                    </button>
+                  )}
+                </div>
+
+                {/* 显示所有内容开关 */}
+                <label className='flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer'>
+                  <span>显示所有内容</span>
+                  <input
+                    type='checkbox'
+                    checked={showAllContent}
+                    onChange={(e) => {
+                      setShowAllContent(e.target.checked);
+                      if (!e.target.checked && favoriteSubTab === '未分类') {
+                        setFavoriteSubTab('电影');
+                      }
+                    }}
+                    className='w-4 h-4 rounded border-gray-400 cursor-pointer accent-gray-800 dark:accent-gray-200'
+                  />
+                </label>
               </div>
+
+              {/* 收藏内容网格 */}
+              {(() => {
+                const VALID_TYPES = ['电影', '剧集', '动漫', '综艺'];
+                const filteredItems = favoriteItems.filter((item) => {
+                  if (favoriteSubTab === '未分类') {
+                    return !VALID_TYPES.includes(item.type_name || '');
+                  }
+                  return item.type_name === favoriteSubTab;
+                });
+
+                return (
+                  <div className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'>
+                    {filteredItems.map((item) => (
+                      <div key={item.id + item.source} className='w-full'>
+                        <VideoCard
+                          query={item.search_title}
+                          {...item}
+                          from='favorite'
+                          type={item.episodes > 1 ? 'tv' : ''}
+                        />
+                      </div>
+                    ))}
+                    {filteredItems.length === 0 && (
+                      <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
+                        暂无收藏内容
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </section>
           ) : (
             // 首页视图
