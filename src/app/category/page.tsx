@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps, @typescript-eslint/no-explicit-any */
 'use client';
 
-import { ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiSite, getAvailableApiSites } from '@/lib/config';
 import { ApiCategory } from '@/lib/downstream';
@@ -26,6 +26,11 @@ function CategoryPageClient() {
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
+  const primaryScrollRef = useRef<HTMLDivElement>(null);
+  const secondaryScrollRef = useRef<HTMLDivElement>(null);
+  const primaryItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const secondaryItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const hasScrolledInitial = useRef(false);
 
   // 返回顶部按钮显示状态
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -323,6 +328,60 @@ function CategoryPageClient() {
     };
   }, [hasMore, isLoadingMore, isLoading]);
 
+  // Scroll helper functions
+  const scrollContainer = useCallback(
+    (
+      direction: 'left' | 'right',
+      containerRef: React.RefObject<HTMLDivElement>
+    ) => {
+      if (!containerRef.current) return;
+      const containerWidth = containerRef.current.offsetWidth;
+      const scrollAmount = containerWidth * 0.9;
+      containerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    },
+    []
+  );
+
+  // Scroll active item into view
+  const scrollActiveIntoView = useCallback(() => {
+    // Scroll primary selection into view
+    if (
+      primarySelection?.key &&
+      primaryItemRefs.current[primarySelection.key]
+    ) {
+      primaryItemRefs.current[primarySelection.key]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+    // Scroll secondary selection into view
+    if (
+      secondarySelection?.type_id &&
+      secondaryItemRefs.current[secondarySelection.type_id]
+    ) {
+      secondaryItemRefs.current[secondarySelection.type_id]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [primarySelection, secondarySelection]);
+
+  // Initial scroll on mount and on back/refresh
+  useEffect(() => {
+    if (hasScrolledInitial.current) return;
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      scrollActiveIntoView();
+      hasScrolledInitial.current = true;
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [scrollActiveIntoView]);
+
   // 返回顶部功能
   const scrollToTop = () => {
     try {
@@ -346,25 +405,49 @@ function CategoryPageClient() {
             <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
               站点
             </span>
-            <div className='overflow-x-auto flex flex-row flex-nowrap bg-gray-200/60 rounded-full p-0.5 sm:p-1 dark:bg-gray-700/60 backdrop-blur-sm'>
-              {primaryData.map((item) => {
-                const isActive = item.key === primarySelection?.key;
-                return (
-                  <div
-                    key={item.key}
-                    onClick={() => setPrimarySelection(item)}
-                    className={`hover:bg-white/60 hover:rounded-full text-nowrap px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 active:bg-white active:rounded-sm active:border-gray-400 ${
-                      isActive
-                        ? 'bg-white rounded-full shadow-sm border-gray-400'
-                        : ''
-                    }`}
-                  >
-                    {item.name.indexOf('资源') > -1
-                      ? item.name.slice(0, item.name.indexOf('资源'))
-                      : item.name}
-                  </div>
-                );
-              })}
+            <div className='relative flex-1 flex items-center px-6'>
+              <div
+                ref={primaryScrollRef}
+                className='overflow-x-auto flex flex-row flex-nowrap bg-gray-200/60 rounded-full p-0.5 sm:p-1 dark:bg-gray-700/60 backdrop-blur-sm flex-1 w-0'
+              >
+                {primaryData.map((item) => {
+                  const isActive = item.key === primarySelection?.key;
+                  return (
+                    <div
+                      key={item.key}
+                      ref={(el) => {
+                        primaryItemRefs.current[item.key] = el;
+                      }}
+                      onClick={() => setPrimarySelection(item)}
+                      className={`hover:bg-white/60 hover:rounded-full text-nowrap px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 active:bg-white active:rounded-sm active:border-gray-400 cursor-pointer ${
+                        isActive
+                          ? 'bg-white rounded-full shadow-sm border-gray-400'
+                          : ''
+                      }`}
+                    >
+                      {item.name.indexOf('资源') > -1
+                        ? item.name.slice(0, item.name.indexOf('资源'))
+                        : item.name}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Left scroll button */}
+              <button
+                onClick={() => scrollContainer('left', primaryScrollRef)}
+                className='absolute left-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-md flex items-center justify-center hover:bg-white dark:hover:bg-gray-600 transition-colors'
+                aria-label='向左滚动'
+              >
+                <ChevronLeft className='w-4 h-4 text-gray-600 dark:text-gray-300' />
+              </button>
+              {/* Right scroll button */}
+              <button
+                onClick={() => scrollContainer('right', primaryScrollRef)}
+                className='absolute right-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-md flex items-center justify-center hover:bg-white dark:hover:bg-gray-600 transition-colors'
+                aria-label='向右滚动'
+              >
+                <ChevronRight className='w-4 h-4 text-gray-600 dark:text-gray-300' />
+              </button>
             </div>
           </div>
 
@@ -375,23 +458,47 @@ function CategoryPageClient() {
                 分类
               </span>
             ) : null}
-            <div className='overflow-x-auto flex flex-row flex-nowrap bg-gray-200/60 rounded-full p-0.5 sm:p-1 dark:bg-gray-700/60 backdrop-blur-sm'>
-              {secondaryData.map((item) => {
-                const isActive = item.type_id == secondarySelection?.type_id;
-                return (
-                  <div
-                    key={item.type_id}
-                    onClick={() => setSecondarySelection(item)}
-                    className={`hover:bg-white/60 hover:rounded-full text-nowrap px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 active:bg-white active:rounded-full active:border-gray-400 ${
-                      isActive
-                        ? 'bg-white rounded-full shadow-sm border-gray-400'
-                        : ''
-                    }`}
-                  >
-                    {item.type_name}
-                  </div>
-                );
-              })}
+            <div className='relative flex-1 flex items-center px-6'>
+              <div
+                ref={secondaryScrollRef}
+                className='overflow-x-auto flex flex-row flex-nowrap bg-gray-200/60 rounded-full p-0.5 sm:p-1 dark:bg-gray-700/60 backdrop-blur-sm flex-1 w-0'
+              >
+                {secondaryData.map((item) => {
+                  const isActive = item.type_id == secondarySelection?.type_id;
+                  return (
+                    <div
+                      key={item.type_id}
+                      ref={(el) => {
+                        secondaryItemRefs.current[item.type_id] = el;
+                      }}
+                      onClick={() => setSecondarySelection(item)}
+                      className={`hover:bg-white/60 hover:rounded-full text-nowrap px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 active:bg-white active:rounded-full active:border-gray-400 cursor-pointer ${
+                        isActive
+                          ? 'bg-white rounded-full shadow-sm border-gray-400'
+                          : ''
+                      }`}
+                    >
+                      {item.type_name}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Left scroll button */}
+              <button
+                onClick={() => scrollContainer('left', secondaryScrollRef)}
+                className='absolute left-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-md flex items-center justify-center hover:bg-white dark:hover:bg-gray-600 transition-colors'
+                aria-label='向左滚动'
+              >
+                <ChevronLeft className='w-4 h-4 text-gray-600 dark:text-gray-300' />
+              </button>
+              {/* Right scroll button */}
+              <button
+                onClick={() => scrollContainer('right', secondaryScrollRef)}
+                className='absolute right-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-md flex items-center justify-center hover:bg-white dark:hover:bg-gray-600 transition-colors'
+                aria-label='向右滚动'
+              >
+                <ChevronRight className='w-4 h-4 text-gray-600 dark:text-gray-300' />
+              </button>
             </div>
           </div>
         </div>

@@ -210,12 +210,10 @@ jobs:
         run: |
           echo "No api_site changes detected, skipping commit"
 
-      - name: Save last commit SHA even if no changes
+      - name: Save last commit SHA locally (no commit if no config changes)
         if: steps.needs_update.outputs.needs_update == 'true' && steps.diff.outputs.has_changes != 'true'
         run: |
           mkdir -p .config-sync
           echo "${{ steps.upstream.outputs.upstream_sha }}" > ${{ env.LAST_COMMIT_FILE }}
-          git add ${{ env.LAST_COMMIT_FILE }}
-          git commit -m "chore: update upstream SHA tracking"
-          git push
-          echo "Upstream SHA updated without config changes"
+          echo "Upstream SHA saved locally: ${{ steps.upstream.outputs.upstream_sha }}"
+          echo "Skipping commit to avoid unnecessary Vercel rebuild"
