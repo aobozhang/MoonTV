@@ -88,7 +88,7 @@
     },
     "jinyingzy.com": {
       "name": "🎬金鹰点播",
-      "api": "https://redir.aoboz.workers.dev/?url=https://jinyingzy.com/api.php/provide/vod",
+      "api": "https://redir.aoboz.workers.dev/?url=https://jyzyapi.com/provide/vod/from/jinyingyun/at/json",
       "detail": "https://jinyingzy.com"
     },
     "p2100.net": {
@@ -165,11 +165,6 @@
       "name": "🔞-老色逼-",
       "api": "https://redir.aoboz.workers.dev/?url=https://apilsbzy1.com/api.php/provide/vod",
       "detail": "https://apilsbzy1.com"
-    },
-    "www.yytv4.cc": {
-      "name": "🔞优优资源",
-      "api": "https://redir.aoboz.workers.dev/?url=https://www.yytv4.cc/api.php/provide/vod",
-      "detail": "https://www.yytv4.cc"
     },
     "xiaojizy.live": {
       "name": "🔞小鸡资源",
