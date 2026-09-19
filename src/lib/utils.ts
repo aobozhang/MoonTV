@@ -66,6 +66,25 @@ export function processImageUrl(originalUrl: string): string {
  * @param m3u8Url m3u8播放列表的URL
  * @returns Promise<{quality: string, loadSpeed: string, pingTime: number}> 视频质量等级和网络信息
  */
+/**
+ * HEAD 预检 URL 可用性（快速失败）
+ * 超时 1.5s，仅检测网络连通性，不拉完整内容
+ */
+export async function checkSourceHealth(
+  url: string
+): Promise<{ reachable: boolean; pingTime: number }> {
+  const start = performance.now();
+  try {
+    await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+    return { reachable: true, pingTime: Math.round(performance.now() - start) };
+  } catch {
+    return {
+      reachable: false,
+      pingTime: Math.round(performance.now() - start),
+    };
+  }
+}
+
 export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
   quality: string; // 如720p、1080p等
   loadSpeed: string; // 自动转换为KB/s或MB/s
@@ -162,7 +181,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
       });
 
       // 监听片段加载完成，只需首个分片即可计算速度
-      hls.on(Hls.Events.FRAG_LOADED, (event: any, data: any) => {
+      hls.on(Hls.Events.FRAG_LOADED, (_event: any, data: any) => {
         if (
           fragmentStartTime > 0 &&
           data &&
@@ -193,7 +212,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
       hls.attachMedia(video);
 
       // 监听hls.js错误
-      hls.on(Hls.Events.ERROR, (event: any, data: any) => {
+      hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
         console.error('HLS错误:', data);
         if (data.fatal) {
           clearTimeout(timeout);

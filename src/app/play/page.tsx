@@ -11,11 +11,13 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { detectAds, filterAdsFromM3U8 as adFilterModule } from '@/lib/adFilter';
 import { getAvailableApiSites } from '@/lib/config';
 import {
+  cacheSourceHealth,
   deleteFavorite,
   deletePlayRecord,
   deleteSkipConfig,
   generateStorageKey,
   getAllPlayRecords,
+  getCachedSourceHealth,
   getSkipConfig,
   isFavorited,
   saveFavorite,
@@ -24,7 +26,11 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { SearchResult } from '@/lib/types';
-import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
+import {
+  checkSourceHealth,
+  getVideoResolutionFromM3u8,
+  processImageUrl,
+} from '@/lib/utils';
 
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
@@ -228,35 +234,63 @@ function PlayPageClient() {
   ): Promise<SearchResult> => {
     if (sources.length === 1) return sources[0];
 
-    // 将播放源均分为两批，并发测速各批，避免一次性过多请求
-    const batchSize = Math.ceil(sources.length / 2);
+    // 第一步：尝试从缓存读取探测结果，同时并发 HEAD 预检所有源
+    const cachedResults: Array<{
+      source: SearchResult;
+      testResult: { quality: string; loadSpeed: string; pingTime: number };
+    }> = [];
+    const needTest: Array<{ source: SearchResult; episodeUrl: string }> = [];
+
+    await Promise.all(
+      sources.map(async (source) => {
+        if (!source.episodes || source.episodes.length === 0) return;
+
+        const episodeUrl =
+          source.episodes.length > 1 ? source.episodes[1] : source.episodes[0];
+
+        // 尝试读缓存
+        const cached = getCachedSourceHealth(source.source, source.id);
+        if (cached) {
+          cachedResults.push({
+            source,
+            testResult: {
+              quality: cached.quality,
+              loadSpeed: cached.loadSpeed,
+              pingTime: cached.pingTime,
+            },
+          });
+          return;
+        }
+
+        // 并发 HEAD 预检
+        const health = await checkSourceHealth(episodeUrl);
+        if (health.reachable) {
+          needTest.push({ source, episodeUrl });
+        }
+      })
+    );
+
+    // 第二步：对预检通过的源进行完整测速（最多3个并发）
     const allResults: Array<{
       source: SearchResult;
       testResult: { quality: string; loadSpeed: string; pingTime: number };
-    } | null> = [];
+    } | null> = [...cachedResults];
 
-    for (let start = 0; start < sources.length; start += batchSize) {
-      const batchSources = sources.slice(start, start + batchSize);
+    const CONCURRENT_TEST = 3;
+    for (let i = 0; i < needTest.length; i += CONCURRENT_TEST) {
+      const batch = needTest.slice(i, i + CONCURRENT_TEST);
       const batchResults = await Promise.all(
-        batchSources.map(async (source) => {
+        batch.map(async ({ source, episodeUrl }) => {
           try {
-            // 检查是否有第一集的播放地址
-            if (!source.episodes || source.episodes.length === 0) {
-              console.warn(`播放源 ${source.source_name} 没有可用的播放地址`);
-              return null;
-            }
-
-            const episodeUrl =
-              source.episodes.length > 1
-                ? source.episodes[1]
-                : source.episodes[0];
             const testResult = await getVideoResolutionFromM3u8(episodeUrl);
-
-            return {
-              source,
-              testResult,
-            };
-          } catch (error) {
+            // 写入缓存
+            cacheSourceHealth(source.source, source.id, {
+              quality: testResult.quality,
+              loadSpeed: testResult.loadSpeed,
+              pingTime: testResult.pingTime,
+            });
+            return { source, testResult };
+          } catch {
             return null;
           }
         })
@@ -770,16 +804,15 @@ function PlayPageClient() {
           : '🔍 正在搜索播放源...'
       );
 
-      let sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
-      if (
-        currentSource &&
-        currentId &&
-        !sourcesInfo.some(
-          (source) => source.source === currentSource && source.id === currentId
-        )
-      ) {
+      let sourcesInfo: SearchResult[] = [];
+
+      if (currentSource && currentId) {
+        // 已有明确源和ID，直接获取详情，无需全源搜索
         sourcesInfo = await fetchSourceDetail(currentSource, currentId);
+      } else {
+        sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
       }
+
       if (sourcesInfo.length === 0) {
         setError('未找到匹配结果');
         setLoading(false);

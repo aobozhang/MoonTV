@@ -67,6 +67,14 @@ interface UserCacheStore {
   favorites?: CacheData<Record<string, Favorite>>;
   searchHistory?: CacheData<string[]>;
   skipConfigs?: CacheData<Record<string, SkipConfig>>;
+  sourceHealth?: CacheData<Record<string, SourceHealthEntry>>;
+}
+
+export interface SourceHealthEntry {
+  pingTime: number;
+  loadSpeed: string;
+  quality: string;
+  timestamp: number;
 }
 
 // ---- 常量 ----
@@ -78,6 +86,19 @@ const SEARCH_HISTORY_KEY = 'moontv_search_history';
 const CACHE_PREFIX = 'moontv_cache_';
 const CACHE_VERSION = '1.0.0';
 const CACHE_EXPIRE_TIME = 60 * 60 * 1000; // 一小时缓存过期
+const SOURCE_HEALTH_CACHE_TTL = 5 * 60 * 1000; // 5分钟探测结果缓存
+
+/**
+ * 快速哈希：用于缓存数据变化检测，替代 JSON.stringify 全量比较
+ */
+function fastHash(obj: unknown): string {
+  const str = JSON.stringify(obj);
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(36);
+}
 
 // ---- 环境变量 ----
 const STORAGE_TYPE = (() => {
@@ -342,6 +363,44 @@ class HybridCacheManager {
   }
 
   /**
+   * 获取缓存的播放源探测结果（5分钟TTL）
+   */
+  getCachedSourceHealth(source: string, id: string): SourceHealthEntry | null {
+    const username = this.getCurrentUsername();
+    if (!username) return null;
+
+    const userCache = this.getUserCache(username);
+    const cached = userCache.sourceHealth;
+    if (!cached) return null;
+
+    // 检查是否过期（5分钟）
+    if (Date.now() - cached.timestamp > SOURCE_HEALTH_CACHE_TTL) return null;
+
+    const key = `${source}+${id}`;
+    return cached.data[key] || null;
+  }
+
+  /**
+   * 缓存播放源探测结果
+   */
+  cacheSourceHealth(
+    source: string,
+    id: string,
+    entry: Omit<SourceHealthEntry, 'timestamp'>
+  ): void {
+    const username = this.getCurrentUsername();
+    if (!username) return;
+
+    const userCache = this.getUserCache(username);
+    if (!userCache.sourceHealth) {
+      userCache.sourceHealth = this.createCacheData({});
+    }
+    const key = `${source}+${id}`;
+    userCache.sourceHealth.data[key] = { ...entry, timestamp: Date.now() };
+    this.saveUserCache(username, userCache);
+  }
+
+  /**
    * 清除指定用户的所有缓存
    */
   clearUserCache(username?: string): void {
@@ -519,7 +578,7 @@ export async function getAllPlayRecords(): Promise<Record<string, PlayRecord>> {
       fetchFromApi<Record<string, PlayRecord>>(`/api/playrecords`)
         .then((freshData) => {
           // 只有数据真正不同时才更新缓存
-          if (JSON.stringify(cachedData) !== JSON.stringify(freshData)) {
+          if (fastHash(cachedData) !== fastHash(freshData)) {
             cacheManager.cachePlayRecords(freshData);
             // 触发数据更新事件，供组件监听
             window.dispatchEvent(
@@ -708,7 +767,7 @@ export async function getSearchHistory(): Promise<string[]> {
       fetchFromApi<string[]>(`/api/searchhistory`)
         .then((freshData) => {
           // 只有数据真正不同时才更新缓存
-          if (JSON.stringify(cachedData) !== JSON.stringify(freshData)) {
+          if (fastHash(cachedData) !== fastHash(freshData)) {
             cacheManager.cacheSearchHistory(freshData);
             // 触发数据更新事件
             window.dispatchEvent(
@@ -929,7 +988,7 @@ export async function getAllFavorites(): Promise<Record<string, Favorite>> {
       fetchFromApi<Record<string, Favorite>>(`/api/favorites`)
         .then((freshData) => {
           // 只有数据真正不同时才更新缓存
-          if (JSON.stringify(cachedData) !== JSON.stringify(freshData)) {
+          if (fastHash(cachedData) !== fastHash(freshData)) {
             cacheManager.cacheFavorites(freshData);
             // 触发数据更新事件
             window.dispatchEvent(
@@ -1115,7 +1174,7 @@ export async function isFavorited(
       fetchFromApi<Record<string, Favorite>>(`/api/favorites`)
         .then((freshData) => {
           // 只有数据真正不同时才更新缓存
-          if (JSON.stringify(cachedFavorites) !== JSON.stringify(freshData)) {
+          if (fastHash(cachedFavorites) !== fastHash(freshData)) {
             cacheManager.cacheFavorites(freshData);
             // 触发数据更新事件
             window.dispatchEvent(
@@ -1335,6 +1394,27 @@ export function getCacheStatus(): {
   };
 }
 
+/**
+ * 获取缓存的播放源探测结果
+ */
+export function getCachedSourceHealth(
+  source: string,
+  id: string
+): SourceHealthEntry | null {
+  return cacheManager.getCachedSourceHealth(source, id);
+}
+
+/**
+ * 缓存播放源探测结果
+ */
+export function cacheSourceHealth(
+  source: string,
+  id: string,
+  entry: Omit<SourceHealthEntry, 'timestamp'>
+): void {
+  cacheManager.cacheSourceHealth(source, id, entry);
+}
+
 // ---------------- React Hook 辅助类型 ----------------
 
 export type CacheUpdateEvent =
@@ -1425,7 +1505,7 @@ export async function getSkipConfig(
       fetchFromApi<Record<string, SkipConfig>>(`/api/skipconfigs`)
         .then((freshData) => {
           // 只有数据真正不同时才更新缓存
-          if (JSON.stringify(cachedData) !== JSON.stringify(freshData)) {
+          if (fastHash(cachedData) !== fastHash(freshData)) {
             cacheManager.cacheSkipConfigs(freshData);
             // 触发数据更新事件
             window.dispatchEvent(
@@ -1553,7 +1633,7 @@ export async function getAllSkipConfigs(): Promise<Record<string, SkipConfig>> {
       fetchFromApi<Record<string, SkipConfig>>(`/api/skipconfigs`)
         .then((freshData) => {
           // 只有数据真正不同时才更新缓存
-          if (JSON.stringify(cachedData) !== JSON.stringify(freshData)) {
+          if (fastHash(cachedData) !== fastHash(freshData)) {
             cacheManager.cacheSkipConfigs(freshData);
             // 触发数据更新事件
             window.dispatchEvent(

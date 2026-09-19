@@ -59,11 +59,9 @@ interface DoubanRecommendApiResponse {
  */
 async function fetchWithTimeout(
   url: string,
-  proxyUrl: string
+  proxyUrl: string,
+  retries = 3
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
-
   // 检查是否使用代理
   const finalUrl =
     proxyUrl === 'https://cors-anywhere.com/'
@@ -73,7 +71,6 @@ async function fetchWithTimeout(
       : url;
 
   const fetchOptions: RequestInit = {
-    signal: controller.signal,
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
@@ -82,14 +79,23 @@ async function fetchWithTimeout(
     },
   };
 
-  try {
-    const response = await fetch(finalUrl, fetchOptions);
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    fetchOptions.signal = controller.signal;
+
+    try {
+      const response = await fetch(finalUrl, fetchOptions);
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (attempt === retries) throw error;
+      // 指数退避：500ms -> 1s -> 2s
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+    }
   }
+  throw new Error('unreachable');
 }
 
 function getDoubanProxyConfig(): {

@@ -18,6 +18,31 @@ import { yellowWords } from '@/lib/yellow';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
+/**
+ * 搜索结果排序：精确匹配优先，其次按年份降序，再按标题升序
+ */
+function sortSearchResults(
+  results: SearchResult[],
+  searchQuery: string
+): SearchResult[] {
+  return [...results].sort((a, b) => {
+    const aExactMatch = a.title === searchQuery.trim();
+    const bExactMatch = b.title === searchQuery.trim();
+
+    if (aExactMatch && !bExactMatch) return -1;
+    if (!aExactMatch && bExactMatch) return 1;
+
+    if (a.year === b.year) {
+      return a.title.localeCompare(b.title);
+    } else {
+      if (a.year === 'unknown' && b.year === 'unknown') return 0;
+      if (a.year === 'unknown') return 1;
+      if (b.year === 'unknown') return -1;
+      return parseInt(a.year) > parseInt(b.year) ? -1 : 1;
+    }
+  });
+}
+
 function SearchPageClient() {
   // 搜索历史
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -94,30 +119,10 @@ function SearchPageClient() {
         }
       });
 
-      // 分别排序后合并
-      const sortFn = (a: SearchResult, b: SearchResult) => {
-        const aExactMatch = a.title === searchQuery.trim();
-        const bExactMatch = b.title === searchQuery.trim();
-
-        if (aExactMatch && !bExactMatch) return -1;
-        if (!aExactMatch && bExactMatch) return 1;
-
-        if (a.year === b.year) {
-          return a.title.localeCompare(b.title);
-        } else {
-          if (a.year === 'unknown' && b.year === 'unknown') {
-            return 0;
-          } else if (a.year === 'unknown') {
-            return 1;
-          } else if (b.year === 'unknown') {
-            return -1;
-          } else {
-            return parseInt(a.year) > parseInt(b.year) ? -1 : 1;
-          }
-        }
-      };
-
-      results = [...safeResults.sort(sortFn), ...adultResults.sort(sortFn)];
+      results = [
+        ...sortSearchResults(safeResults, searchQuery),
+        ...sortSearchResults(adultResults, searchQuery),
+      ];
     }
 
     return results;
@@ -253,33 +258,7 @@ function SearchPageClient() {
           return !yellowWords.some((word: string) => typeName.includes(word));
         });
       }
-      setSearchResults(
-        results.sort((a: SearchResult, b: SearchResult) => {
-          // 优先排序：标题与搜索词完全一致的排在前面
-          const aExactMatch = a.title === query.trim();
-          const bExactMatch = b.title === query.trim();
-
-          if (aExactMatch && !bExactMatch) return -1;
-          if (!aExactMatch && bExactMatch) return 1;
-
-          // 如果都匹配或都不匹配，则按原来的逻辑排序
-          if (a.year === b.year) {
-            return a.title.localeCompare(b.title);
-          } else {
-            // 处理 unknown 的情况
-            if (a.year === 'unknown' && b.year === 'unknown') {
-              return 0;
-            } else if (a.year === 'unknown') {
-              return 1; // a 排在后面
-            } else if (b.year === 'unknown') {
-              return -1; // b 排在后面
-            } else {
-              // 都是数字年份，按数字大小排序（大的在前面）
-              return parseInt(a.year) > parseInt(b.year) ? -1 : 1;
-            }
-          }
-        })
-      );
+      setSearchResults(sortSearchResults(results, query));
       setShowResults(true);
     } catch (error) {
       setSearchResults([]);
