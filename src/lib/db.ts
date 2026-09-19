@@ -229,38 +229,46 @@ export class DbManager {
 
   // ---------- 源健康分 ----------
   async getSourceHealth(sourceKey: string): Promise<SourceHealth | null> {
-    if (typeof this.storage.getSourceHealth === 'function') {
-      return this.storage.getSourceHealth(sourceKey);
+    if (!this.storage || typeof this.storage.getSourceHealth !== 'function') {
+      return null;
     }
-    return null;
+    return this.storage.getSourceHealth(sourceKey);
   }
 
   async setSourceHealth(
     sourceKey: string,
     health: SourceHealth
   ): Promise<void> {
-    if (typeof this.storage.setSourceHealth === 'function') {
-      await this.storage.setSourceHealth(sourceKey, health);
+    if (!this.storage || typeof this.storage.setSourceHealth !== 'function') {
+      return;
     }
+    await this.storage.setSourceHealth(sourceKey, health);
   }
 
   // ---------- 搜索结果缓存 ----------
   async getCachedSearchResults(
     keyword: string
   ): Promise<CachedSearchResult | null> {
-    if (typeof this.storage.getCachedSearchResults === 'function') {
-      return this.storage.getCachedSearchResults(keyword);
+    if (
+      !this.storage ||
+      typeof this.storage.getCachedSearchResults !== 'function'
+    ) {
+      return null;
     }
-    return null;
+    return this.storage.getCachedSearchResults(keyword);
   }
 
   async setCachedSearchResults(
     keyword: string,
     results: SearchResult[]
   ): Promise<void> {
-    if (typeof this.storage.setCachedSearchResults === 'function') {
-      await this.storage.setCachedSearchResults(keyword, results);
+    if (
+      !this.storage ||
+      typeof this.storage.setCachedSearchResults !== 'function'
+    ) {
+      return;
     }
+    await this.storage.setCachedSearchResults(keyword, results);
   }
 }
 
