@@ -427,7 +427,7 @@ function getRedisClient(): RedisClientType {
   let client: RedisClientType | undefined = (global as any)[globalKey];
 
   if (!client) {
-    const url = process.env.REDIS_URL;
+    const url = process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL;
     if (!url) {
       throw new Error('REDIS_URL env variable not set');
     }

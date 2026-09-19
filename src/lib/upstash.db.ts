@@ -414,8 +414,10 @@ function getUpstashRedisClient(): Redis {
   let client: Redis | undefined = (global as any)[globalKey];
 
   if (!client) {
-    const upstashUrl = process.env.UPSTASH_URL;
-    const upstashToken = process.env.UPSTASH_TOKEN;
+    const upstashUrl =
+      process.env.UPSTASH_URL || process.env.UPSTASH_KV_REST_API_URL;
+    const upstashToken =
+      process.env.UPSTASH_TOKEN || process.env.UPSTASH_KV_REST_API_TOKEN;
 
     if (!upstashUrl || !upstashToken) {
       throw new Error(
