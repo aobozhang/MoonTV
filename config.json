@@ -144,7 +144,8 @@
     "91md.me": {
       "name": "🔞麻豆视频",
       "api": "https://redir.aoboz.workers.dev/?url=https://91md.me/api.php/provide/vod",
-      "detail": "https://91md.me"
+      "detail": "https://91md.me",
+      "disabled": true
     },
     "155zy2.com": {
       "name": "🔞155-资源",
