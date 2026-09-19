@@ -62,6 +62,7 @@ export default function VideoCard({
   const router = useRouter();
   const [favorited, setFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const isAggregate = from === 'search' && !!items?.length;
 
@@ -197,7 +198,7 @@ export default function VideoCard({
   );
 
   const handleClick = useCallback(() => {
-    setIsLoading(true);
+    setIsNavigating(true);
     if (from === 'douban') {
       router.push(
         `/play?title=${encodeURIComponent(actualTitle.trim())}${
@@ -275,7 +276,7 @@ export default function VideoCard({
       onClick={handleClick}
     >
       {/* 点击后加载遮罩 */}
-      {isLoading && (
+      {isNavigating && (
         <div className='absolute inset-0 z-10 flex items-center justify-center bg-black/50 rounded-lg'>
           <div className='w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin' />
         </div>
