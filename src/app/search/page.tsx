@@ -62,6 +62,7 @@ function SearchPageClient() {
   const [speedTestCache, setSpeedTestCache] = useState<
     Record<string, { quality: string; loadSpeed: string }>
   >({});
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // 获取默认聚合设置：只读取用户本地设置，默认为 true
   const getDefaultAggregate = () => {
@@ -302,10 +303,12 @@ function SearchPageClient() {
 
   const fetchSearchResults = async (query: string) => {
     try {
+      setSearchError(null);
       setIsLoading(true);
       const response = await fetch(
         `/api/search?q=${encodeURIComponent(query.trim())}`
       );
+      if (!response.ok) throw new Error('请求失败');
       const data = await response.json();
       let results = data.results;
       if (
@@ -322,6 +325,7 @@ function SearchPageClient() {
       probeSourcesInBackground(results);
     } catch (error) {
       setSearchResults([]);
+      setSearchError('网络请求失败，请检查网络连接');
     } finally {
       setIsLoading(false);
     }
@@ -483,9 +487,26 @@ function SearchPageClient() {
                         />
                       </div>
                     ))}
-                {processedResults.length === 0 && (
-                  <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                    未找到相关结果
+                {processedResults.length === 0 && !isLoading && (
+                  <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400 space-y-1'>
+                    {searchError ? (
+                      <>
+                        <p className='text-red-500'>{searchError}</p>
+                        <button
+                          onClick={() => fetchSearchResults(searchQuery)}
+                          className='mt-2 text-sm text-green-600 hover:text-green-700 underline'
+                        >
+                          重试
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p>未找到相关结果</p>
+                        <p className='text-sm text-gray-400'>
+                          试试其他关键词，或检查拼写
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
