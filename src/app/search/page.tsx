@@ -7,12 +7,15 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import {
   addSearchHistory,
+  cacheSourceHealth,
   clearSearchHistory,
   deleteSearchHistory,
+  getCachedSourceHealth,
   getSearchHistory,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { SearchResult } from '@/lib/types';
+import { checkSourceHealth, getVideoResolutionFromM3u8 } from '@/lib/utils';
 import { yellowWords } from '@/lib/yellow';
 
 import PageLayout from '@/components/PageLayout';
@@ -55,6 +58,10 @@ function SearchPageClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  // 测速缓存：key = `${source}+${id}`，value = { quality, loadSpeed }
+  const [speedTestCache, setSpeedTestCache] = useState<
+    Record<string, { quality: string; loadSpeed: string }>
+  >({});
 
   // 获取默认聚合设置：只读取用户本地设置，默认为 true
   const getDefaultAggregate = () => {
@@ -241,6 +248,58 @@ function SearchPageClient() {
     }
   }, [searchParams]);
 
+  // 后台测速：对搜索结果每个源做 HEAD 预检 + 缓存
+  const probeSourcesInBackground = (results: SearchResult[]) => {
+    // 按 source+id 去重，只测前10个
+    const seen = new Set<string>();
+    const toProbe: { result: SearchResult; episodeUrl: string }[] = [];
+
+    for (const r of results.slice(0, 10)) {
+      if (!r.episodes?.length) continue;
+      const key = `${r.source}+${r.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      // 优先用第二集测速（通常更稳定）
+      const episodeUrl = r.episodes.length > 1 ? r.episodes[1] : r.episodes[0];
+
+      // 先尝试读缓存
+      const cached = getCachedSourceHealth(r.source, r.id);
+      if (cached) {
+        setSpeedTestCache((prev) => ({
+          ...prev,
+          [key]: { quality: cached.quality, loadSpeed: cached.loadSpeed },
+        }));
+        continue;
+      }
+
+      toProbe.push({ result: r, episodeUrl });
+    }
+
+    // HEAD 预检通过的才测速
+    Promise.all(
+      toProbe.map(async ({ result, episodeUrl }) => {
+        const health = await checkSourceHealth(episodeUrl);
+        if (!health.reachable) return;
+        try {
+          const info = await getVideoResolutionFromM3u8(episodeUrl);
+          const key = `${result.source}+${result.id}`;
+          cacheSourceHealth(result.source, result.id, {
+            quality: info.quality,
+            loadSpeed: info.loadSpeed,
+            pingTime: info.pingTime,
+          });
+          setSpeedTestCache((prev) => ({
+            ...prev,
+            [key]: { quality: info.quality, loadSpeed: info.loadSpeed },
+          }));
+        } catch (_) {
+          /* ignore */
+        }
+      })
+    );
+  };
+
   const fetchSearchResults = async (query: string) => {
     try {
       setIsLoading(true);
@@ -260,6 +319,7 @@ function SearchPageClient() {
       }
       setSearchResults(sortSearchResults(results, query));
       setShowResults(true);
+      probeSourcesInBackground(results);
     } catch (error) {
       setSearchResults([]);
     } finally {
@@ -375,6 +435,12 @@ function SearchPageClient() {
               >
                 {viewMode === 'agg'
                   ? aggregatedResults.map(([mapKey, group]) => {
+                      // 取组内最优测速结果
+                      const speedInfo = group
+                        .map(
+                          (item) => speedTestCache[`${item.source}+${item.id}`]
+                        )
+                        .filter(Boolean)[0];
                       return (
                         <div key={`agg-${mapKey}`} className='w-full'>
                           <VideoCard
@@ -385,6 +451,7 @@ function SearchPageClient() {
                                 ? searchQuery.trim()
                                 : ''
                             }
+                            speedTestInfo={speedInfo}
                           />
                         </div>
                       );
@@ -410,6 +477,9 @@ function SearchPageClient() {
                           year={item.year}
                           from='search'
                           type={item.episodes.length > 1 ? 'tv' : 'movie'}
+                          speedTestInfo={
+                            speedTestCache[`${item.source}+${item.id}`]
+                          }
                         />
                       </div>
                     ))}

@@ -36,6 +36,7 @@ interface VideoCardProps {
   items?: SearchResult[];
   type?: string;
   isBangumi?: boolean;
+  speedTestInfo?: { quality: string; loadSpeed: string };
 }
 
 export default function VideoCard({
@@ -56,6 +57,7 @@ export default function VideoCard({
   items,
   type = '',
   isBangumi = false,
+  speedTestInfo,
 }: VideoCardProps) {
   const router = useRouter();
   const [favorited, setFavorited] = useState(false);
@@ -415,6 +417,11 @@ export default function VideoCard({
             <span className='inline-block border rounded px-2 py-0.5 border-gray-500/60 dark:border-gray-400/60 transition-all duration-300 ease-in-out group-hover:border-green-500/60 group-hover:text-green-600 dark:group-hover:text-green-400'>
               {source_name}
             </span>
+            {speedTestInfo && (
+              <span className='ml-1 inline-block text-green-600 dark:text-green-400 font-medium'>
+                {speedTestInfo.quality} · {speedTestInfo.loadSpeed}
+              </span>
+            )}
           </span>
         )}
       </div>
