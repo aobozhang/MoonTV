@@ -388,6 +388,17 @@ export default function VideoCard({
           </div>
         )}
 
+        {/* 速度标签 */}
+        {speedTestInfo &&
+          speedTestInfo.loadSpeed !== '未知' &&
+          speedTestInfo.loadSpeed !== '测量中...' && (
+            <div className='absolute top-2 left-2 bg-blue-500/90 backdrop-blur-sm text-white text-xs font-medium px-1.5 py-0.5 rounded shadow-md transition-all duration-300 ease-out group-hover:scale-105 flex items-center gap-1'>
+              <span className='text-[10px]'>⚡</span>
+              <span>{speedTestInfo.quality}</span>
+              <span className='opacity-75'>{speedTestInfo.loadSpeed}</span>
+            </div>
+          )}
+
         {/* 豆瓣链接 */}
         {config.showDoubanLink && actualDoubanId && actualDoubanId !== 0 && (
           <a
