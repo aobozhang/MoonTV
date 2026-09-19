@@ -197,6 +197,7 @@ export default function VideoCard({
   );
 
   const handleClick = useCallback(() => {
+    setIsLoading(true);
     if (from === 'douban') {
       router.push(
         `/play?title=${encodeURIComponent(actualTitle.trim())}${
@@ -273,6 +274,12 @@ export default function VideoCard({
       className='group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500]'
       onClick={handleClick}
     >
+      {/* 点击后加载遮罩 */}
+      {isLoading && (
+        <div className='absolute inset-0 z-10 flex items-center justify-center bg-black/50 rounded-lg'>
+          <div className='w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin' />
+        </div>
+      )}
       {/* 海报容器 */}
       <div className='relative aspect-[2/3] overflow-hidden rounded-lg'>
         {/* 骨架屏 */}
