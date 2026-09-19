@@ -15,7 +15,7 @@
  */
 
 import { getAuthInfoFromBrowserCookie } from './auth';
-import { SkipConfig } from './types';
+import { SkipConfig, SourceHealth } from './types';
 
 // 全局错误触发函数
 function triggerGlobalError(message: string) {
@@ -1413,6 +1413,68 @@ export function cacheSourceHealth(
   entry: Omit<SourceHealthEntry, 'timestamp'>
 ): void {
   cacheManager.cacheSourceHealth(source, id, entry);
+}
+
+/**
+ * 异步同步源健康分到服务器（Upstash/Redis）
+ * 非阻塞调用，失败不影响本地缓存
+ */
+export function syncSourceHealthToServer(
+  source: string,
+  id: string,
+  entry: Omit<SourceHealthEntry, 'timestamp'>
+): void {
+  if (STORAGE_TYPE === 'localstorage') return;
+
+  const sourceKey = `${source}+${id}`;
+  // 异步同步，不阻塞
+  fetch('/api/source-health', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sourceKey,
+      health: {
+        score: 80, // 基础分
+        failCount: 0,
+        lastSuccess: Date.now(),
+        lastFail: 0,
+        pingTime: entry.pingTime,
+        loadSpeed: entry.loadSpeed,
+        quality: entry.quality,
+        updatedAt: Date.now(),
+      },
+    }),
+  }).catch(() => {
+    // 静默失败，不影响用户体验
+  });
+}
+
+/**
+ * 从服务器获取源健康分（用于跨 session 缓存预热）
+ */
+export async function fetchSourceHealthFromServer(
+  source: string,
+  id: string
+): Promise<SourceHealthEntry | null> {
+  if (STORAGE_TYPE === 'localstorage') return null;
+
+  const sourceKey = `${source}+${id}`;
+  try {
+    const res = await fetchWithAuth(
+      `/api/source-health?key=${encodeURIComponent(sourceKey)}`
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { health: SourceHealth | null };
+    if (!data.health) return null;
+    return {
+      pingTime: data.health.pingTime,
+      loadSpeed: data.health.loadSpeed,
+      quality: data.health.quality,
+      timestamp: data.health.updatedAt,
+    } as SourceHealthEntry;
+  } catch {
+    return null;
+  }
 }
 
 // ---------------- React Hook 辅助类型 ----------------
