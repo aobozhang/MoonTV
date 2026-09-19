@@ -806,10 +806,26 @@ function PlayPageClient() {
 
       let sourcesInfo: SearchResult[] = [];
 
-      if (currentSource && currentId) {
-        // 已有明确源和ID，直接获取详情，无需全源搜索
+      // 聚合模式（prefer=true）：从 sessionStorage 读取完整源列表
+      if (needPreferRef.current) {
+        try {
+          const stored = sessionStorage.getItem('aggregate_sources');
+          if (stored) {
+            const parsed = JSON.parse(stored) as SearchResult[];
+            if (parsed.length > 0) {
+              sourcesInfo = parsed;
+              sessionStorage.removeItem('aggregate_sources');
+            }
+          }
+        } catch (_) {
+          /* ignore */
+        }
+      }
+
+      // 兜底：没有 sessionStorage 数据时按原有逻辑
+      if (sourcesInfo.length === 0 && currentSource && currentId) {
         sourcesInfo = await fetchSourceDetail(currentSource, currentId);
-      } else {
+      } else if (sourcesInfo.length === 0) {
         sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
       }
 

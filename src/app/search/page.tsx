@@ -423,9 +423,14 @@ function SearchPageClient() {
                         type='checkbox'
                         className='sr-only peer'
                         checked={viewMode === 'agg'}
-                        onChange={() =>
-                          setViewMode(viewMode === 'agg' ? 'all' : 'agg')
-                        }
+                        onChange={() => {
+                          const next = viewMode === 'agg' ? 'all' : 'agg';
+                          setViewMode(next);
+                          localStorage.setItem(
+                            'defaultAggregateSearch',
+                            JSON.stringify(next === 'agg')
+                          );
+                        }}
                       />
                       <div className='w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600'></div>
                       <div className='absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4'></div>

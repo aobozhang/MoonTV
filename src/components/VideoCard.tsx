@@ -206,6 +206,14 @@ export default function VideoCard({
         }${actualSearchType ? `&stype=${actualSearchType}` : ''}`
       );
     } else if (actualSource && actualId) {
+      // 聚合模式下：将完整源列表存入 sessionStorage，播放页直接读取
+      if (isAggregate && items?.length) {
+        try {
+          sessionStorage.setItem('aggregate_sources', JSON.stringify(items));
+        } catch (_) {
+          /* ignore */
+        }
+      }
       router.push(
         `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
           actualTitle
@@ -226,6 +234,8 @@ export default function VideoCard({
     isAggregate,
     actualQuery,
     actualSearchType,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    items,
   ]);
 
   const config = useMemo(() => {
