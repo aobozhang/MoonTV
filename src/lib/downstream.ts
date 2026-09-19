@@ -76,7 +76,7 @@ function parseSearchItem(
     source: sourceKey,
     source_name: sourceName,
     class: item.vod_class,
-    year: item.vod_year ? item.vod_year.match(/\d{4}/)?.[0] || '' : 'unknown',
+    year: item.vod_year?.match(/\d{4}/)?.[0] || 'unknown',
     desc: cleanHtmlTags(item.vod_content || ''),
     type_name: item.type_name,
     douban_id: item.vod_douban_id,
@@ -201,9 +201,7 @@ export async function searchFromApi(
                 source: apiSite.key,
                 source_name: apiName,
                 class: item.vod_class,
-                year: item.vod_year
-                  ? item.vod_year.match(/\d{4}/)?.[0] || ''
-                  : 'unknown',
+                year: item.vod_year?.match(/\d{4}/)?.[0] || 'unknown',
                 desc: cleanHtmlTags(item.vod_content || ''),
                 type_name: item.type_name,
                 douban_id: item.vod_douban_id,
@@ -402,9 +400,7 @@ export async function getDetailFromApi(
     source: apiSite.key,
     source_name: apiSite.name,
     class: videoDetail.vod_class,
-    year: videoDetail.vod_year
-      ? videoDetail.vod_year.match(/\d{4}/)?.[0] || ''
-      : 'unknown',
+    year: videoDetail.vod_year?.match(/\d{4}/)?.[0] || 'unknown',
     desc: cleanHtmlTags(videoDetail.vod_content),
     type_name: videoDetail.type_name,
     douban_id: videoDetail.vod_douban_id,
