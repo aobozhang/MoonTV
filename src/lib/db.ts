@@ -2,7 +2,15 @@
 
 import { AdminConfig } from './admin.types';
 import { RedisStorage } from './redis.db';
-import { Favorite, IStorage, PlayRecord, SkipConfig } from './types';
+import {
+  CachedSearchResult,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SearchResult,
+  SkipConfig,
+  SourceHealth,
+} from './types';
 import { UpstashRedisStorage } from './upstash.db';
 
 // storage type 常量: 'localstorage' | 'redis' | 'upstash'，默认 'localstorage'
@@ -217,6 +225,42 @@ export class DbManager {
       return (this.storage as any).getAllSkipConfigs(userName);
     }
     return {};
+  }
+
+  // ---------- 源健康分 ----------
+  async getSourceHealth(sourceKey: string): Promise<SourceHealth | null> {
+    if (typeof this.storage.getSourceHealth === 'function') {
+      return this.storage.getSourceHealth(sourceKey);
+    }
+    return null;
+  }
+
+  async setSourceHealth(
+    sourceKey: string,
+    health: SourceHealth
+  ): Promise<void> {
+    if (typeof this.storage.setSourceHealth === 'function') {
+      await this.storage.setSourceHealth(sourceKey, health);
+    }
+  }
+
+  // ---------- 搜索结果缓存 ----------
+  async getCachedSearchResults(
+    keyword: string
+  ): Promise<CachedSearchResult | null> {
+    if (typeof this.storage.getCachedSearchResults === 'function') {
+      return this.storage.getCachedSearchResults(keyword);
+    }
+    return null;
+  }
+
+  async setCachedSearchResults(
+    keyword: string,
+    results: SearchResult[]
+  ): Promise<void> {
+    if (typeof this.storage.setCachedSearchResults === 'function') {
+      await this.storage.setCachedSearchResults(keyword, results);
+    }
   }
 }
 

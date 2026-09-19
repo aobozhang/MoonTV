@@ -81,9 +81,35 @@ export interface IStorage {
   ): Promise<void>;
   deleteSkipConfig(userName: string, source: string, id: string): Promise<void>;
   getAllSkipConfigs(userName: string): Promise<{ [key: string]: SkipConfig }>;
+
+  // 源健康分
+  getSourceHealth(sourceKey: string): Promise<SourceHealth | null>;
+  setSourceHealth(sourceKey: string, health: SourceHealth): Promise<void>;
+
+  // 搜索结果缓存
+  getCachedSearchResults(keyword: string): Promise<CachedSearchResult | null>;
+  setCachedSearchResults(
+    keyword: string,
+    results: SearchResult[]
+  ): Promise<void>;
 }
 
 // 搜索结果数据结构
+export interface SourceHealth {
+  score: number; // 健康分 0-100
+  failCount: number; // 连续失败次数
+  lastSuccess: number; // 上次成功时间戳
+  lastFail: number; // 上次失败时间戳
+  pingTime: number; // 最近一次测速 ping
+  loadSpeed: string; // 最近一次测速速度
+  quality: string; // 最近一次测速质量
+  updatedAt: number; // 更新时间戳
+}
+
+export interface CachedSearchResult {
+  results: SearchResult[];
+  cachedAt: number;
+}
 export interface SearchResult {
   id: string;
   title: string;

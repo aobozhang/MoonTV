@@ -3,10 +3,23 @@
 import { createClient, RedisClientType } from 'redis';
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord, SkipConfig } from './types';
+import {
+  CachedSearchResult,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SearchResult,
+  SkipConfig,
+  SourceHealth,
+} from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
+
+// 源健康分 TTL：24小时
+const SOURCE_HEALTH_TTL = 24 * 60 * 60;
+// 搜索结果缓存 TTL：10分钟
+const SEARCH_CACHE_TTL = 10 * 60;
 
 // 数据类型转换辅助函数
 function ensureString(value: any): string {
@@ -361,6 +374,50 @@ export class RedisStorage implements IStorage {
     });
 
     return configs;
+  }
+
+  // ---------- 源健康分 ----------
+  private sourceHealthKey(sourceKey: string) {
+    return `health:${sourceKey}`;
+  }
+
+  async getSourceHealth(sourceKey: string): Promise<SourceHealth | null> {
+    const val = await this.client.get(this.sourceHealthKey(sourceKey));
+    return val ? (JSON.parse(val as string) as SourceHealth) : null;
+  }
+
+  async setSourceHealth(
+    sourceKey: string,
+    health: SourceHealth
+  ): Promise<void> {
+    await this.client.setEx(
+      this.sourceHealthKey(sourceKey),
+      SOURCE_HEALTH_TTL,
+      JSON.stringify(health)
+    );
+  }
+
+  // ---------- 搜索结果缓存 ----------
+  private searchCacheKey(keyword: string) {
+    return `search_cache:${keyword}`;
+  }
+
+  async getCachedSearchResults(
+    keyword: string
+  ): Promise<CachedSearchResult | null> {
+    const val = await this.client.get(this.searchCacheKey(keyword));
+    return val ? (JSON.parse(val as string) as CachedSearchResult) : null;
+  }
+
+  async setCachedSearchResults(
+    keyword: string,
+    results: SearchResult[]
+  ): Promise<void> {
+    await this.client.setEx(
+      this.searchCacheKey(keyword),
+      SEARCH_CACHE_TTL,
+      JSON.stringify({ results, cachedAt: Date.now() })
+    );
   }
 }
 

@@ -3,10 +3,23 @@
 import { Redis } from '@upstash/redis';
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord, SkipConfig } from './types';
+import {
+  CachedSearchResult,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SearchResult,
+  SkipConfig,
+  SourceHealth,
+} from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
+
+// 源健康分 TTL：24小时
+const SOURCE_HEALTH_TTL = 24 * 60 * 60;
+// 搜索结果缓存 TTL：10分钟
+const SEARCH_CACHE_TTL = 10 * 60;
 
 // 数据类型转换辅助函数
 function ensureString(value: any): string {
@@ -342,6 +355,56 @@ export class UpstashRedisStorage implements IStorage {
     });
 
     return configs;
+  }
+
+  // ---------- 源健康分 ----------
+  private sourceHealthKey(sourceKey: string) {
+    return `health:${sourceKey}`;
+  }
+
+  async getSourceHealth(sourceKey: string): Promise<SourceHealth | null> {
+    const val = await withRetry(() =>
+      this.client.get<SourceHealth>(this.sourceHealthKey(sourceKey))
+    );
+    return val as SourceHealth | null;
+  }
+
+  async setSourceHealth(
+    sourceKey: string,
+    health: SourceHealth
+  ): Promise<void> {
+    await withRetry(() =>
+      this.client.set(this.sourceHealthKey(sourceKey), health, {
+        ex: SOURCE_HEALTH_TTL,
+      })
+    );
+  }
+
+  // ---------- 搜索结果缓存 ----------
+  private searchCacheKey(keyword: string) {
+    return `search_cache:${keyword}`;
+  }
+
+  async getCachedSearchResults(
+    keyword: string
+  ): Promise<CachedSearchResult | null> {
+    const val = await withRetry(() =>
+      this.client.get<CachedSearchResult>(this.searchCacheKey(keyword))
+    );
+    return val as CachedSearchResult | null;
+  }
+
+  async setCachedSearchResults(
+    keyword: string,
+    results: SearchResult[]
+  ): Promise<void> {
+    await withRetry(() =>
+      this.client.set(
+        this.searchCacheKey(keyword),
+        { results, cachedAt: Date.now() } satisfies CachedSearchResult,
+        { ex: SEARCH_CACHE_TTL }
+      )
+    );
   }
 }
 
